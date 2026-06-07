@@ -1,12 +1,25 @@
 #!/usr/bin/env bash
-# Developing Mind — substrate-sync
-# Role: Automates the semantic memory loop. 
-# Commits daily learning to the PSS (Persistent Semantic Substrate).
+# Developing Mind — substrate-sync (Guardian Gated)
+# Role: Automates the semantic memory loop with quality enforcement.
+# Arxiv Anchor: 2410.02724 (Prop 3.2: Sequence Capture) & 2604.24579 (Prop 1: Analytic Reliability)
 
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
+GGA_PATH="/mnt/c/Users/Fixxia/scripts/gga_repo/bin/gga"
+
 cd "$REPRO_DIR"
 
-echo "Syncing Developing Mind state to GitHub..."
-git add .
-git commit -m "Cognitive Snapshot: $(date +'%Y-%m-%d %H:%M:%S') - Learned Markovian dynamics"
-# git push origin main # Requires user to set remote
+echo "Guardian Angel: Reviewing cognitive snapshot..."
+
+# Atomic Staging
+git add src/markovian_core/ src/papers/ .gga scripts/
+
+# Run gga run
+"$GGA_PATH" run
+if [ $? -eq 0 ]; then
+    echo "Review passed. Syncing to GitHub..."
+    git commit -m "PSS: Codified 8 Markovian Papers (2410.02724, 2604.24579, etc.) - Gated by GGA"
+    git push origin master
+else
+    echo "Guardian Angel rejected the snapshot. Please review the failures."
+    exit 1
+fi
