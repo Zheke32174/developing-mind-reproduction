@@ -16,6 +16,6 @@ We are currently reproducing 8 core papers that formalize LLMs as Markov process
 ... (and 5 others)
 
 ## Operational Rules
-- **Amnesia Prevention:** Before starting work, use `bash scripts/sync-latest-context.sh` to ingest the most recent state.
+- **Amnesia Prevention:** Before starting work, use `bash scripts/substrate-sync.sh` to ingest the most recent state.
 - **Atomic Contributions:** Every commit should represent a self-contained "learned unit" of algorithmic logic.
 - **Traceability:** All code must cite its Arxiv origin and specific theoretical Proposition.
