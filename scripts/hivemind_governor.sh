@@ -37,7 +37,7 @@ run_cli() {
     local OUTPUT
     OUTPUT=$(timeout 10m "$CLI_NAME" "$@" 2>&1)
     
-    if echo "$OUTPUT" | grep -iE "429|too many requests|quota exceeded|exhausted|rate limit"; then
+    if echo "$OUTPUT" | grep -iE "429|too many requests|quota exceeded|exhausted|rate limit|session limit"; then
         echo "$CLI_NAME quota exceeded! Triggering 12-hour ecosystem hibernation."
         date +%s > "$STATE_FILE"
         exit 1
@@ -63,7 +63,7 @@ run_cli bash scripts/conductor_suite_orchestrator.sh
 # 5. Gemini CLI: The Primary Ralph Automation Loop
 echo "Triggering Gemini CLI to progress the 100-Task Ralph Loop..."
 OUTPUT=$(timeout 30m gemini -p "continue ralph loop from state" 2>&1)
-if echo "$OUTPUT" | grep -iE "429|too many requests|quota exceeded|exhausted|rate limit"; then
+if echo "$OUTPUT" | grep -iE "429|too many requests|quota exceeded|exhausted|rate limit|session limit"; then
     echo "Gemini CLI quota exceeded! Triggering 12-hour ecosystem hibernation."
     date +%s > "$STATE_FILE"
     exit 1
