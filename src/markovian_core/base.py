@@ -12,3 +12,26 @@ class MarkovProcess:
     def __init__(self, state_space: StateSpace):
         self.space = state_space
         self.Q = None # Transition matrix
+
+class AbsorbingMarkovChain:
+    """
+    Paper 2604.24579: Fitting traces to an absorbing discrete-time Markov chain.
+    M = (Q, R+, R-) where:
+    - Q: transient-to-transient transitions
+    - R+: transient-to-success transitions
+    - R-: transient-to-failure transitions
+    """
+    def __init__(self, states: List[str]):
+        self.states = states
+        self.Q = None
+        self.R_plus = None
+        self.R_minus = None
+
+    def calculate_fundamental_matrix(self):
+        """
+        N = (I - Q)^-1. 
+        Represents the expected number of times in each state before absorption.
+        """
+        if self.Q is None: return None
+        I = np.eye(self.Q.shape[0])
+        return np.linalg.inv(I - self.Q)
