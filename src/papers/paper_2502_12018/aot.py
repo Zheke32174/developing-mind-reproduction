@@ -4,32 +4,53 @@ Role: Memoryless reasoning trajectory management.
 Solving recurrent amnesia by transforming history-dependent thoughts into self-contained states.
 """
 
-from typing import List, Optional
+import json
+from typing import List, Optional, Callable
 from markovian_core.base import ReasoningState
 
 class AtomOfThoughts:
     """
     Implements the Markovian reasoning process.
-    Each step takes an atomic state and produces the next, minimizing historical dependency.
+    Focuses on 'Thought-to-State' transformation to eliminate historical redundancy.
     """
-    def __init__(self, model_executor):
+    
+    def __init__(self, model_executor: Callable[[str], str]):
         self.model = model_executor
 
     def step(self, state: ReasoningState) -> ReasoningState:
         """
-        Performs one atomic reasoning step.
-        Decomposes the transition into an atomic unit invocation.
+        Transition function: T(state_i) -> state_{i+1}.
+        The prompt is engineered to force the model to output a self-contained state.
         """
-        # Logic to call LLM with state.to_prompt() and parse the next state
-        pass
+        prompt = (
+            "You are an atomic reasoning unit. Given the CURRENT STATE, "
+            "produce the NEXT STATE. Do NOT include history. "
+            "Output valid JSON with fields: conclusion, pending_subproblems.\n\n"
+            f"CURRENT STATE:\n{state.to_prompt()}"
+        )
+        
+        raw_response = self.model(prompt)
+        try:
+            # Simple heuristic parser for the atomic update
+            data = json.loads(raw_response)
+            return ReasoningState(
+                problem_description=state.problem,
+                current_conclusion=data.get("conclusion", state.conclusion),
+                remaining_subproblems=data.get("pending_subproblems", [])
+            )
+        except:
+            # Fallback/Safety
+            return state
 
-    def scale_test_time(self, initial_state: ReasoningState, budget: int) -> List[ReasoningState]:
+    def solve(self, problem: str, max_steps: int = 5) -> str:
         """
-        Increases computational resources by expanding the reasoning chain
-        through reflective refinement or tree search.
+        Iterative reasoning loop. 
+        Each iteration is memoryless relative to the trajectory.
         """
-        trajectory = [initial_state]
-        for _ in range(budget):
-            next_state = self.step(trajectory[-1])
-            trajectory.append(next_state)
-        return trajectory
+        state = ReasoningState(problem, "Initial analysis", ["Solve core problem"])
+        for _ in range(max_steps):
+            if not state.pending:
+                break
+            state = self.step(state)
+        return state.conclusion
+
