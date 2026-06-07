@@ -25,4 +25,7 @@ fi
 echo "⚖️ Invoking Codex Judge..."
 bash "$LAMP_DIR/ai-scaffold/cron-run.sh" 
 
+echo "🐕 Running Ralph Watchdog..."
+python3 "$SCRIPTS_DIR/ralph_watchdog.py"
+
 echo "Daemon checks complete."
