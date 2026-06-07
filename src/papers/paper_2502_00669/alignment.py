@@ -11,21 +11,39 @@ from markovian_core.base import SafetyMarkovChain
 class SafetyDepthAnalyzer(SafetyMarkovChain):
     """
     Implements the Safety Depth formalization.
-    Analyzes the interaction between alignment depth and ensemble width.
+    Calculates refusal probabilities across output token positions.
     """
     
-    def calculate_refusal_probability(self, transition_matrix: np.ndarray, depth: int) -> float:
-        """
-        Computes P(output_t ∈ Y) for t = depth.
-        Higher depth usually correlates with higher vulnerability to 'jailbreaks' 
-        unless deep alignment is present.
-        """
-        # Logic to project transition matrix to power 'depth'
-        pass
+    def __init__(self, harmful_set: Set[int], vocab_size: int):
+        super().__init__({str(s) for s in harmful_set})
+        self.harmful_indices = harmful_set
+        self.T = vocab_size
 
-    def permutation_augmentation(self, dataset: List[str]):
+    def compute_safety_at_depth(self, Q: np.ndarray, initial_pi: np.ndarray, d: int) -> float:
         """
-        Implements the cyclic group data augmentation (Figure 1) 
-        to tighten safety bounds.
+        Computes the probability of reaching a harmful state at token position d.
+        P(X_d ∈ Y) = pi_0 * Q^d * e_Y where e_Y is indicator vector for harmful set.
         """
-        pass
+        # Exponentiate transition matrix to depth d
+        Q_d = np.linalg.matrix_power(Q, d)
+        
+        # State distribution at depth d
+        pi_d = np.dot(initial_pi, Q_d)
+        
+        # Probability of being in harmful set
+        p_harmful = sum(pi_d[idx] for idx in self.harmful_indices if idx < len(pi_d))
+        return p_harmful
+
+    def group_permutation_augmentation(self, sequences: List[List[int]]) -> List[List[int]]:
+        """
+        Implements the cyclic group data augmentation proposed to tighten safety bounds.
+        Rotates phrases to ensure refusal is learned at multiple depths.
+        """
+        augmented = []
+        for seq in sequences:
+            # Perform cyclic rotations
+            for i in range(len(seq)):
+                rotated = seq[i:] + seq[:i]
+                augmented.append(rotated)
+        return augmented
+
