@@ -11,3 +11,4 @@ Codified the core mathematical logic for 8 foundational Markovian papers:
 - **2506.07298 (Section 2.1):** Bayesian Forward Filtering for latent state belief.
 - **2406.03075 (Section 3.3):** Multi-agent Debate (MC-MAD) cohesion coordination.
 - **2603.11228 (Eq. 7):** Iterative generation chain diversity and recurrence metrics.
+- **2407.13067:** Supportive Accountability and Persona-Driven Memory Continuity.
