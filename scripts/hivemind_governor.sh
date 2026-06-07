@@ -5,8 +5,13 @@
 
 export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-STATE_FILE="/mnt/c/Users/Fixxia/developing-mind-reproduction/scripts/quota_state.txt"
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+# shellcheck source=scripts/devmind-env.sh
+source "$SCRIPT_DIR/devmind-env.sh"
+
+STATE_FILE="${DEVMIND_QUOTA_STATE:-$DEVMIND_STATE_DIR/quota_state.txt}"
+
+cd "$REPRO_DIR" || exit 1
 
 echo "Checking Hivemind Quota State..."
 
@@ -23,8 +28,6 @@ if [ -f "$STATE_FILE" ]; then
         rm -f "$STATE_FILE"
     fi
 fi
-
-cd "$REPRO_DIR"
 
 echo "Amnesia Prevention: Ingesting the most recent state..."
 bash scripts/substrate-sync.sh
