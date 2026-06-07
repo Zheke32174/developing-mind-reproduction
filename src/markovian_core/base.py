@@ -100,3 +100,31 @@ class HiddenMarkovModel:
     def generate_sequence(self, length: int) -> List[int]:
         """Generates an observable sequence O based on latent states S."""
         pass
+
+class DebateAgent:
+    """
+    Paper 2406.03075: Multi-agent Debate.
+    Roles: Trust, Skeptic, Leader.
+    """
+    def __init__(self, role: str, model_executor):
+        self.role = role
+        self.model = model_executor
+
+    def evaluate(self, claim: str, evidence: str, history: List[str]) -> bool:
+        """Produces a judgment (True/False) based on role and context."""
+        pass
+
+class CohesionMarkovChain:
+    """
+    Paper 2406.03075: Markov Chain-based Multi-agent Debate.
+    States represent debate modes (Trust-initiated vs Skeptic-initiated).
+    Transitions are deterministic based on previous outcomes.
+    """
+    def __init__(self, agents: Dict[str, DebateAgent]):
+        self.agents = agents
+        self.current_mode = "S1" # Default to Trust-initiated
+        self.history = []
+
+    def check_consensus(self, results: List[bool]) -> bool:
+        """Termination condition: all agents in the state reach the same judgment."""
+        return len(set(results)) == 1
