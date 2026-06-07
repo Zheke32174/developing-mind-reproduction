@@ -66,3 +66,20 @@ class SafetyMarkovChain:
         required to maintain safety below threshold epsilon.
         """
         pass
+
+class AdditiveMarkovChain:
+    """
+    Paper 2603.04412: Additive Multi-Step Markov Chains.
+    Approximates high-order dependencies as a superposition of low-order ones.
+    Reduces parameter complexity from O(T^K) to O(K * T).
+    """
+    def __init__(self, vocabulary_size: int, context_window: int):
+        self.T = vocabulary_size
+        self.K = context_window
+        self.memory_functions = [] # List of T x T transition matrices for each depth
+
+    def predict_next(self, history: List[int]) -> np.ndarray:
+        """
+        Decomposes the conditional probability into a sum of contributions.
+        """
+        pass
