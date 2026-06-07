@@ -35,3 +35,17 @@ class AbsorbingMarkovChain:
         if self.Q is None: return None
         I = np.eye(self.Q.shape[0])
         return np.linalg.inv(I - self.Q)
+
+class ReasoningState:
+    """
+    Paper 2502.12018: A self-contained atomic reasoning unit.
+    Encapsulates a 'state' that is independent of historical 'thoughts'.
+    """
+    def __init__(self, problem_description: str, current_conclusion: str, remaining_subproblems: List[str]):
+        self.problem = problem_description
+        self.conclusion = current_conclusion
+        self.pending = remaining_subproblems
+
+    def to_prompt(self) -> str:
+        """Serializes the state for the next LLM invocation."""
+        return f"Problem: {self.problem}\nConclusion: {self.conclusion}\nPending: {', '.join(self.pending)}"
