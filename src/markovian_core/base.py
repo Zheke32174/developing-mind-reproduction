@@ -83,3 +83,20 @@ class AdditiveMarkovChain:
         Decomposes the conditional probability into a sum of contributions.
         """
         pass
+
+class HiddenMarkovModel:
+    """
+    Paper 2506.07298: Hidden Markov Models in ICL.
+    States S are latent; only emissions O are observable.
+    LLMs learn to predict O by implicitly inferring S.
+    """
+    def __init__(self, num_latent_states: int, observation_space_size: int):
+        self.N = num_latent_states
+        self.M = observation_space_size
+        self.A = None # Latent transition matrix (N x N)
+        self.B = None # Emission matrix (N x M)
+        self.pi = None # Initial state distribution
+
+    def generate_sequence(self, length: int) -> List[int]:
+        """Generates an observable sequence O based on latent states S."""
+        pass
