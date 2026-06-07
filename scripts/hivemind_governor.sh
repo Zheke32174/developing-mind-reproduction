@@ -57,6 +57,9 @@ run_cli opencode --pure --print-logs status
 # 4. Claude Code: Deep Memory Synthesis
 run_cli bash /mnt/c/Users/Fixxia/scripts/fetch_claude_memory.sh
 
+# 4.5 Conductor Suite: Ecosystem Coherence
+run_cli bash scripts/conductor_suite_orchestrator.sh
+
 # 5. Gemini CLI: The Primary Ralph Automation Loop
 echo "Triggering Gemini CLI to progress the 100-Task Ralph Loop..."
 OUTPUT=$(timeout 30m gemini --non-interactive "continue ralph loop from state" 2>&1)

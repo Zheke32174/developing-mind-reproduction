@@ -1,3 +1,4 @@
+# Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability)
 import unittest
 import subprocess
 import os
@@ -6,7 +7,7 @@ import json
 class TestEcosystem(unittest.TestCase):
     
     def test_ralph_loop_active(self):
-        state_file = "/mnt/c/Users/Fixxia/.gemini/ralph/state.json"
+        state_file = "/home/fixxia/.gemini/ralph/state.json"
         self.assertTrue(os.path.exists(state_file), "Ralph state file does not exist")
         with open(state_file, 'r') as f:
             state = json.load(f)
