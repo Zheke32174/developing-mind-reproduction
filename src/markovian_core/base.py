@@ -49,3 +49,20 @@ class ReasoningState:
     def to_prompt(self) -> str:
         """Serializes the state for the next LLM invocation."""
         return f"Problem: {self.problem}\nConclusion: {self.conclusion}\nPending: {', '.join(self.pending)}"
+
+class SafetyMarkovChain:
+    """
+    Paper 2502.00669: Formalizing Safety Depth.
+    An LLM is safely aligned if the probability of transitioning 
+    to a set of harmful states Y is minimized across output depth.
+    """
+    def __init__(self, harmful_set: Set[str]):
+        self.Y = harmful_set
+        self.safety_matrix = None # S matrix from the paper
+
+    def estimate_safe_depth(self, epsilon: float) -> int:
+        """
+        Calculates the designated output position (depth) 
+        required to maintain safety below threshold epsilon.
+        """
+        pass
