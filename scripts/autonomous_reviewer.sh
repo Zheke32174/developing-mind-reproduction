@@ -16,8 +16,8 @@ GGA_EXIT=$?
 # 2. Codex Judge (Logic & Health Audit)
 echo "⚖️ Stage 2: Codex Judge (Functional Audit)..."
 # Force a judge run in the LAMP stack
-echo "2026-06-07 2" > /home/fixxia/lamp/state/cron-run.state
-bash /home/fixxia/lamp/ai-scaffold/cron-run.sh
+echo "2026-06-07 2" > /substrate/mind/lamp/state/cron-run.state
+bash /substrate/mind/lamp/ai-scaffold/cron-run.sh
 JUDGE_EXIT=$?
 
 # 3. Decision Logic

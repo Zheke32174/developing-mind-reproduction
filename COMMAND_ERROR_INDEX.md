@@ -20,8 +20,8 @@ This index tracks frequent execution failures and codifies mandatory rules to el
 - **Symptom:** "Attempted path resolves outside the allowed workspace directories."
 - **Root Cause:** `write_file` and `read_file` are restricted to specific mount points.
 - **Mandatory Rule:** 
-    1. For files in `/mnt/c/Users/Fixxia/`, always use `run_shell_command` with `cp` or `cat` redirection from a temp file.
-    2. Use `/home/fixxia/.gemini/tmp/fixxia-1/` as the primary staging area for `write_file`.
+    1. For files in `/substrate/host/`, always use `run_shell_command` with `cp` or `cat` redirection from a temp file.
+    2. Use `/substrate/mind/.gemini/tmp/fixxia-1/` as the primary staging area for `write_file`.
 - **Status:** [ACTIVE] - Codified in Subconscious Daemon deployment.
 
 ---

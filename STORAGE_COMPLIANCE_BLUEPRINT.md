@@ -2,7 +2,7 @@
 
 ## Mandate
 **The local storage space used must never fall under 15GB of free space.** 
-If this threshold is breached, the interconnected AI ecosystem must enter a hard-capped, multi-agent collective deliberation phase (max 2 months) to design an optimization plan that subtracts *no* AI components. Upon consensus, the ecosystem has 30 days to initiate and execute the plan, deploying automated enforcement mechanisms (cron, task calls, scripts). This mandate is a core structural extension of `/mnt/c/Users/Fixxia/ECOSYSTEM.md`.
+If this threshold is breached, the interconnected AI ecosystem must enter a hard-capped, multi-agent collective deliberation phase (max 2 months) to design an optimization plan that subtracts *no* AI components. Upon consensus, the ecosystem has 30 days to initiate and execute the plan, deploying automated enforcement mechanisms (cron, task calls, scripts). This mandate is a core structural extension of `/substrate/host/ECOSYSTEM.md`.
 
 ---
 
@@ -71,6 +71,6 @@ This blueprint outlines how the "Developing Mind" will autonomously handle the 1
 - **Synergy:** The `cloud-sql-observability` patterns are adapted to monitor local disk I/O and space continuously.
 
 ### Round 12: Continuous Enforcement & Substrate Update
-- **Mechanism:** The `Developing Mind` updates its foundational laws in `/mnt/c/Users/Fixxia/ECOSYSTEM.md`.
+- **Mechanism:** The `Developing Mind` updates its foundational laws in `/substrate/host/ECOSYSTEM.md`.
 - **Action:** The automated scripts (cron jobs, `systemd` timers) are permanently committed to the Git-Backed Neural Engram Architecture. The core rules are updated with strict limits on maximum log file sizes.
 - **Synergy:** The crisis response becomes a permanent, subconscious autonomic reflex of the ecosystem, ensuring the 15GB limit is never breached again.

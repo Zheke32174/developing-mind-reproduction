@@ -5,7 +5,7 @@
 
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
-LOG_FILE="/home/fixxia/lamp/logs/sub_hermes.log"
+LOG_FILE="/substrate/mind/lamp/logs/sub_hermes.log"
 
 echo "🧬 Starting Bi-Daily Sub-Hermes Evolution..."
 

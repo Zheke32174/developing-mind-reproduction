@@ -5,7 +5,7 @@
 
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
-TASKMASTER_BIN="node /home/fixxia/.claude/plugins/underhall/claude-task-master/dist/task-master.js"
+TASKMASTER_BIN="node /substrate/mind/.claude/plugins/underhall/claude-task-master/dist/task-master.js"
 
 echo "🌅 Initiating Daily Full Evolution Suite..."
 

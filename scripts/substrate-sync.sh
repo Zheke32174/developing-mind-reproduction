@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
-# Developing Mind — substrate-sync (AST Validated)
+# Developing Mind — substrate-sync (AST Validated & Dynamic)
 # Arxiv Anchor: 2410.02724 & 2604.24579
 
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
-GGA_PATH="/mnt/c/Users/Fixxia/scripts/gga_repo/bin/gga"
+# Detect base directory (Dynamic)
+REPRO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+GGA_PATH="${REPRO_DIR}/../scripts/gga_repo/bin/gga"
+if [ ! -f "$GGA_PATH" ]; then
+    GGA_PATH="/mnt/c/Users/Fixxia/scripts/gga_repo/bin/gga"
+fi
 
 cd "$REPRO_DIR"
 
@@ -15,11 +19,12 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "👼 Guardian Angel: Reviewing cognitive snapshot..."
-git add src/markovian_core/ src/papers/ .gga scripts/ REPRODUCTION_NOTES.md GEMINI.md
+git add .
 "$GGA_PATH" run
 if [ $? -eq 0 ]; then
     echo "✅ Review passed. Syncing to GitHub..."
-    git commit -m "PSS: Algorithmic Snapshot with AST Validation - Gated by GGA"
+    MSG="${1:-PSS: Algorithmic Snapshot with AST Validation - Gated by GGA}"
+    git commit -m "$MSG"
     git push origin master
 else
     echo " Guardian Angel rejected the snapshot."

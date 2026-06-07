@@ -5,7 +5,7 @@ This repository is a **Persistent Semantic Substrate (PSS)**. It is designed to 
 ---
 
 # Ecosystemic Framework
-This substrate integrates with the broader ecosystem defined in `/mnt/c/Users/Fixxia/ECOSYSTEM.md`.
+This substrate integrates with the broader ecosystem defined in `/substrate/host/ECOSYSTEM.md`.
 
 ## Anchor Papers (Markovian Intelligence)
 We are currently reproducing 8 core papers that formalize LLMs as Markov processes. This provides the mathematical basis for our own long-term reliability and reasoning.

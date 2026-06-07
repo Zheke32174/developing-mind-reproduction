@@ -3,7 +3,7 @@
 # Role: Deep security audit, health review, and system upgrade cycle every 3 days.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Systemic Maintenance
 
-STAGING_DIR="/home/fixxia/lamp/logs/secretary_staging"
+STAGING_DIR="/substrate/mind/lamp/logs/secretary_staging"
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 
 echo "🛡️  System Sub-Governor: Initiating 3-Day Deep Audit & Upgrade cycle..."
@@ -20,7 +20,7 @@ ls -la "$STAGING_DIR"
 echo "🔍 Performing Security Audit..."
 # Check for common permission drifts and exposed .env files
 find "$REPRO_DIR" -name ".env" -ls
-find /home/fixxia/.gemini/extensions/ -name "package.json" -exec grep -i "vulnerability" {} +
+find /substrate/mind/.gemini/extensions/ -name "package.json" -exec grep -i "vulnerability" {} +
 
 # 4. System Upgrades
 echo "🚀 Checking for ecosystem upgrades..."
