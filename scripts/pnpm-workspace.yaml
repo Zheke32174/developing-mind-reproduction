@@ -1,0 +1,5 @@
+# Arxiv Anchor: 2603.04412 (Eq. 7) - Structural Unification
+packages:
+  - "/home/fixxia/.gemini/extensions/*"
+  - "/home/fixxia/.claude/plugins/underhall/*"
+  - "/home/fixxia/.claude/mcp-servers/underhall/*"

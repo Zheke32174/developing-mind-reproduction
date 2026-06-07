@@ -1,0 +1,22 @@
+# Arxiv Anchor: 2603.04412 (Eq. 7) - Structural Mapping
+/home/fixxia/.gemini/extensions/helloagents/package.json
+/home/fixxia/.gemini/extensions/skill-porter/package.json
+/home/fixxia/.gemini/extensions/desktop-commander/package.json
+/home/fixxia/.gemini/extensions/opencode-shell-strategy/package.json
+/home/fixxia/.gemini/extensions/gemini-cli-jules/mcp-server/package.json
+/home/fixxia/.gemini/extensions/mcp-local-memory/package.json
+/home/fixxia/.gemini/extensions/gemini-swarm/package.json
+/home/fixxia/.gemini/extensions/chrome-devtools-mcp/package.json
+/home/fixxia/.gemini/extensions/gemini-cli-security/mcp-server/package.json
+/home/fixxia/.gemini/extensions/mcp-server-browserbase/package.json
+/home/fixxia/.gemini/extensions/context7/package.json
+/home/fixxia/.gemini/extensions/mcp-toolbox-for-databases/.hugo/package.json
+/home/fixxia/.gemini/extensions/self-command/package.json
+/home/fixxia/.gemini/extensions/github/ui/package.json
+/home/fixxia/.gemini/extensions/swarm-tools/package.json
+/home/fixxia/.gemini/extensions/copilot-mcp/package.json
+/home/fixxia/.claude/plugins/underhall/claude-mem/package.json
+/home/fixxia/.claude/plugins/underhall/ArgusBot/package.json
+/home/fixxia/.claude/plugins/underhall/everything-claude-code/package.json
+/home/fixxia/.claude/plugins/underhall/claude-octopus/package.json
+/home/fixxia/.claude/plugins/underhall/claude-task-master/package.json
