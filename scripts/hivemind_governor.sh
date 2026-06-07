@@ -49,7 +49,7 @@ run_cli() {
 run_cli bash scripts/hermes_60_day_evolution.sh
 
 # 2. Codex: Governance & Judging (7:00 AM rules)
-run_cli bash scripts/daily_governance.py
+run_cli python3 scripts/daily_governance.py
 
 # 3. OpenCode: Substrate Quality Review
 run_cli opencode --pure --print-logs status
