@@ -3,11 +3,9 @@
 # Role: Orchestrates a daily deep review and evolution cycle across all ecosystem CLIs.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Systemic Evolution
 
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
-TASKMASTER_BIN="npx --yes task-master-ai"
+TASKMASTER_BIN="node /substrate/mind/.claude/plugins/underhall/claude-task-master/dist/task-master.js"
 
 echo "🌅 Initiating Daily Full Evolution Suite..."
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Developing Mind — substrate-sync (AST Validated & Dynamic)
 # Arxiv Anchor: 2410.02724 & 2604.24579
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 # Detect base directory (Dynamic)
 REPRO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)

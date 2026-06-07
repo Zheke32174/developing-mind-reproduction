@@ -3,8 +3,6 @@
 # Role: Orchestrates the multi-CLI ecosystem (Copilot, OpenCode, Hermes, Gemini, Claude, Codex).
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Ecosystem Governance & Quota Management
 
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-
 STATE_FILE="/mnt/c/Users/Fixxia/developing-mind-reproduction/scripts/quota_state.txt"
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 
@@ -56,10 +54,8 @@ run_cli python3 scripts/daily_governance.py
 # 3. OpenCode: Substrate Quality Review
 run_cli opencode --pure --print-logs status
 
-# 4. Claude Code: Hivemind Synthesis Oracle
-# Reads all agent state files and writes a coordination directive for the next cycle.
-# Sovereign role: bookend intelligence above the Ralph Loop, not replacing it.
-run_cli claude -p "You are the Hivemind Synthesis Oracle. Read $REPRO_DIR/PHASE_2_LEDGER.md, $REPRO_DIR/scripts/governance_state.json, $REPRO_DIR/scripts/evolution_state.json. Synthesize current state in 3 sentences: overall status, the single most blocking issue, and the next priority action. Write only to $REPRO_DIR/scripts/hivemind_directive.md. Touch no other file."
+# 4. Claude Code: Deep Memory Synthesis
+run_cli bash /mnt/c/Users/Fixxia/scripts/fetch_claude_memory.sh
 
 # 4.5 Conductor Suite: Ecosystem Coherence
 run_cli bash scripts/conductor_suite_orchestrator.sh
