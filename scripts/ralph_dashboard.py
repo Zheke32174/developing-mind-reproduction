@@ -7,7 +7,10 @@ import json
 import os
 import time
 
-STATE_FILE = "/home/fixxia/.gemini/ralph/state.json"
+STATE_FILE = os.environ.get(
+    "DEVMIND_RALPH_STATE",
+    "/mnt/c/Users/Fixxia/developing-mind-reproduction/.gemini/ralph/state.json",
+)
 
 def print_dashboard():
     print("=== Ralph Background Loop Status ===")
