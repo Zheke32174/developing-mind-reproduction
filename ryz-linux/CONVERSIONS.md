@@ -16,8 +16,11 @@ libs where shared). Status: ✅ done & A/B-verified · 🔨 in progress · ⏳ b
 | seq  | ✅ | `seq N` 1..N via int(args[0])→atoll; matches /usr/bin/seq |
 | yes | ⬜ | basename | ⬜ | dirname | ⬜ | (need string slicing) |
 
-## Tier 2 — file utilities  (needs file-IO codegen)
-| cat | ⬜ | wc | ⬜ | head | ⬜ | tail | ⬜ | nl | ⬜ | tac | ⬜ |
+## Tier 2 — file utilities  (native fs.read landed: __ryz_read helper)
+| tool | status | notes |
+|---|---|---|
+| cat | ✅ | single-file; `fs.read`→native helper; matches /bin/cat + interpreter |
+| wc | ⬜ | head | ⬜ | tail | ⬜ | nl | ⬜ | tac | ⬜ |
 
 ## Tier 3 — text processing
 | sort | ⬜ | uniq | ⬜ | cut | ⬜ | tr | ⬜ | grep (basic) | ⬜ |

@@ -33,6 +33,7 @@ class Codegen {
   private fnRet = new Map<string, CType>();
   private fnExported = new Map<string, boolean>();
   private usesArgs = false; // main needs (int argc, char** argv)
+  private usesRead = false; // emit the __ryz_read file helper
 
   constructor(private prog: A.Program) {}
 
@@ -53,6 +54,15 @@ class Codegen {
     out.push("#include <string.h>");
     out.push("#include <stdlib.h>");
     out.push("");
+    if (this.usesRead) {
+      out.push("static char* __ryz_read(const char* path){");
+      out.push("    FILE* f = fopen(path, \"rb\"); if(!f) return \"\";");
+      out.push("    fseek(f,0,SEEK_END); long n=ftell(f); fseek(f,0,SEEK_SET);");
+      out.push("    char* buf=(char*)malloc((n>0?n:0)+1); if(!buf){fclose(f);return \"\";}");
+      out.push("    size_t r=fread(buf,1,n>0?n:0,f); buf[r]='\\0'; fclose(f); return buf;");
+      out.push("}");
+      out.push("");
+    }
     for (const f of fns) if (f.name !== "main") out.push(this.signature(f) + ";");
     out.push("");
     for (const b of bodies) { out.push(b); out.push(""); }
@@ -167,6 +177,7 @@ class Codegen {
         if (c.callee.kind === "Member") {
           const m = c.callee as A.Member;
           if (m.object.kind === "Ident" && (m.object as A.Ident).name === "os" && m.property === "args") return "args";
+          if (m.object.kind === "Ident" && (m.object as A.Ident).name === "fs" && m.property === "read") return "const char*";
         }
         if (c.callee.kind === "Ident") {
           const nm = (c.callee as A.Ident).name;
@@ -205,6 +216,9 @@ class Codegen {
           const m = e.callee as A.Member;
           if (m.object.kind === "Ident" && (m.object as A.Ident).name === "os" && m.property === "args") {
             this.usesArgs = true; return "/*os.args*/0";
+          }
+          if (m.object.kind === "Ident" && (m.object as A.Ident).name === "fs" && m.property === "read" && e.args.length === 1) {
+            this.usesRead = true; return `__ryz_read(${this.emitExpr(e.args[0], scope)})`;
           }
           throw new RyzcError(`native backend: member call '.${m.property}' not supported (Task #52)`);
         }

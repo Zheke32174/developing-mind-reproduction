@@ -1,0 +1,14 @@
+// coreutil: cat (single file) — RYZ Linux native. Prints the file's contents.
+import "std/os";
+import "std/fs";
+import "std/fmt";
+
+fn main() -> i32 {
+    let args = os.args();
+    if len(args) < 1 {
+        return 1;
+    }
+    let content = fs.read(args[0]);
+    fmt.print(content);
+    return 0;
+}

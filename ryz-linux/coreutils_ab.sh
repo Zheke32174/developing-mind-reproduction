@@ -22,5 +22,12 @@ ck "seq 5: native vs system"     "$(seq 5)"        "$("$BIN/seq" 5)"
 ck "seq 1: native vs system"     "$(seq 1)"        "$("$BIN/seq" 1)"
 ck "seq 0: native vs system"     "$(seq 0 2>/dev/null || true)" "$("$BIN/seq" 0)"
 
+# cat
+build cat
+SAMPLE="$(mktemp)"; printf '%s\n' "line one" "line two" "  spaced  " "end" > "$SAMPLE"
+ck "cat: native vs system"      "$(/bin/cat "$SAMPLE")"   "$("$BIN/cat" "$SAMPLE")"
+ck "cat: native vs interpreter" "$($RYZ run "$RL/src/cat.ryz" "$SAMPLE")" "$("$BIN/cat" "$SAMPLE")"
+rm -f "$SAMPLE"
+
 echo; echo "coreutils A/B: $pass passed, $fail failed"
 exit $((fail==0?0:1))
