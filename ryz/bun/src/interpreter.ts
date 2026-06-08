@@ -23,26 +23,26 @@ export class RyzChannel {
 }
 
 export class RyzError extends Error {}
-class ReturnSignal { constructor(public value: Value) {} }
 
 interface Binding { value: Value; mutable: boolean; }
 
 export class Env {
-  private vars = new Map<string, Binding>();
+  // Plain null-proto object beats Map for the small, short-lived scopes we allocate per call.
+  private vars: Record<string, Binding> = Object.create(null);
   constructor(public parent?: Env) {}
   define(name: string, value: Value, mutable: boolean) {
-    this.vars.set(name, { value, mutable });
+    this.vars[name] = { value, mutable };
   }
   get(name: string): Value {
     let e: Env | undefined = this;
-    while (e) { const b = e.vars.get(name); if (b) return b.value; e = e.parent; }
+    while (e) { const b = e.vars[name]; if (b !== undefined) return b.value; e = e.parent; }
     throw new RyzError(`undefined variable '${name}'`);
   }
   set(name: string, value: Value) {
     let e: Env | undefined = this;
     while (e) {
-      const b = e.vars.get(name);
-      if (b) {
+      const b = e.vars[name];
+      if (b !== undefined) {
         if (!b.mutable) throw new RyzError(`cannot assign to immutable binding '${name}' (use 'mut')`);
         b.value = value; return;
       }
@@ -50,6 +50,13 @@ export class Env {
     }
     throw new RyzError(`undefined variable '${name}'`);
   }
+}
+
+// A block needs its own scope only if it introduces bindings; otherwise it can
+// reuse the parent env, avoiding millions of allocations in hot loops/recursion.
+function blockNeedsScope(block: A.Block): boolean {
+  for (const s of block.body) if (s.kind === "LetStmt" || s.kind === "FnDecl") return true;
+  return false;
 }
 
 export interface IO { write(s: string): void; }
@@ -60,6 +67,9 @@ export class Interpreter {
   // when the program would otherwise block (recv on an empty channel) or at exit.
   // (True yielding coroutines are roadmap — see GRAMMAR.md.)
   private taskQueue: Array<() => void> = [];
+  // Return propagation without exceptions (exceptions-per-return were the hot-path cost).
+  private returning = false;
+  private retVal: Value = null;
   constructor(private io: IO = { write: (s) => process.stdout.write(s) }, private args: string[] = []) {}
 
   private drainScheduler() {
@@ -182,35 +192,38 @@ export class Interpreter {
     return 0;
   }
 
-  private execBlock(block: A.Block, env: Env) {
-    const deferred: A.Node[] = [];
+  // Creates a child scope only when the block introduces bindings (hot-path optimization).
+  private execBlock(block: A.Block, parentEnv: Env) {
+    const env = blockNeedsScope(block) ? new Env(parentEnv) : parentEnv;
+    let deferred: A.Node[] | undefined;
     try {
       for (const s of block.body) {
-        if (s.kind === "DeferStmt") { deferred.push(s.expr); continue; }
+        if (s.kind === "DeferStmt") { (deferred ??= []).push(s.expr); continue; }
         this.exec(s, env);
+        if (this.returning) break;
       }
     } finally {
-      for (let k = deferred.length - 1; k >= 0; k--) this.eval(deferred[k], env);
+      if (deferred) for (let k = deferred.length - 1; k >= 0; k--) this.eval(deferred[k], env);
     }
   }
 
   private exec(node: A.Node, env: Env): void {
     switch (node.kind) {
       case "LetStmt": env.define(node.name, this.eval(node.value, env), node.mutable); return;
-      case "ReturnStmt": throw new ReturnSignal(node.value ? this.eval(node.value, env) : null);
+      case "ReturnStmt": this.retVal = node.value ? this.eval(node.value, env) : null; this.returning = true; return;
       case "ExprStmt": this.eval(node.expr, env); return;
-      case "Block": this.execBlock(node, new Env(env)); return;
+      case "Block": this.execBlock(node, env); return;
       case "DeferStmt": this.eval(node.expr, env); return; // bare defer outside block
       case "IfStmt": {
-        if (truthy(this.eval(node.cond, env))) this.execBlock(node.then, new Env(env));
+        if (truthy(this.eval(node.cond, env))) this.execBlock(node.then, env);
         else if (node.else) {
-          if (node.else.kind === "Block") this.execBlock(node.else, new Env(env));
+          if (node.else.kind === "Block") this.execBlock(node.else, env);
           else this.exec(node.else, env);
         }
         return;
       }
       case "WhileStmt":
-        while (truthy(this.eval(node.cond, env))) this.execBlock(node.body, new Env(env));
+        while (truthy(this.eval(node.cond, env))) { this.execBlock(node.body, env); if (this.returning) break; }
         return;
       case "ForStmt": {
         const iter = this.eval(node.iter, env);
@@ -221,6 +234,7 @@ export class Interpreter {
           const loopEnv = new Env(env);
           loopEnv.define(node.varName, item, true);
           this.execBlock(node.body, loopEnv);
+          if (this.returning) break;
         }
         return;
       }
@@ -243,8 +257,8 @@ export class Interpreter {
   private callFn(fn: RyzFn, args: Value[]): Value {
     const env = new Env(fn.closure);
     fn.decl.params.forEach((p, idx) => env.define(p.name, args[idx] ?? null, true));
-    try { this.execBlock(fn.decl.body, env); }
-    catch (e) { if (e instanceof ReturnSignal) return e.value; throw e; }
+    this.execBlock(fn.decl.body, env);
+    if (this.returning) { const v = this.retVal; this.returning = false; this.retVal = null; return v; }
     return null;
   }
 

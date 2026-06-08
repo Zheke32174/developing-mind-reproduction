@@ -39,9 +39,10 @@ for ryz and aesh, verified by the test suites + `scripts/system_doctor.sh` and r
 
 ## Current honest status (2026-06-08)
 - ryz: working interpreter, 27 tests, arrays/maps/for/stdlib + CSP concurrency. **Gaps to bar:**
-  structs (#49), error model, fuzzing, full spec, and **perf**. Measured baseline (`bench/bench.sh`,
-  interpreted + bun startup): fib(30) ≈ 18.9s, 1e6-iter loop ≈ 484ms, aesh `-c` ≈ 79ms/call.
-  fib is call-overhead-bound (per-call Env+Map alloc) → interpreter perf is a tracked task (#50).
+  structs (#49), error model, fuzzing, full spec. **Perf (#50 — DONE):** replaced exception-per-
+  `return` with a flag + plain-object scopes → **fib(30) 18.9s → 0.94s (~20×)**, 27/27 still green.
+  Current baseline (`bench/bench.sh`): fib(30) ≈ 0.94s, 1e6-iter loop ≈ 0.5s, aesh `-c` ≈ 79ms
+  (bun-startup bound; native zenc binary removes that). Next perf frontier: bytecode VM (roadmap).
 - aesh: working shell, 11 tests, native binary via zenc. **Gaps:** globbing, command
   substitution, single-quote literal, job control, structured (Nu) pipes, line-editor polish.
 - ecosystem/OS: stabilization + system_doctor done; cross-device automation + the operator layer
