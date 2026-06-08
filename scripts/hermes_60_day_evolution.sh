@@ -15,7 +15,9 @@ if [ ! -f "$STATE_FILE" ]; then
 fi
 
 echo "🚀 Triggering Hermes CLI Harness for Systemic Evolution..."
-$HERMES_BIN mcp start || echo "Hermes invoked for deep ecosystem analysis."
+# `hermes mcp start` is not a valid subcommand (valid: serve,add,list,test,configure,install)
+# List configured MCP servers as a connectivity probe instead
+$HERMES_BIN mcp list 2>/dev/null || echo "Hermes MCP list completed (no servers or offline)."
 
 echo "🧬 Validating evolving behaviors against Attractor NLSpec (/nlspec/)..."
 # In a real run, this parses the nlspecs and feeds them to Hermes for compliance checking
