@@ -102,6 +102,13 @@ export class Parser {
     if (this.at(T.While)) return this.whileStmt();
     if (this.at(T.For)) return this.forStmt();
     if (this.at(T.Defer)) { this.next(); const e = this.expression(); this.accept(T.Semi); return { kind: "DeferStmt", expr: e }; }
+    if (this.at(T.Spawn)) {
+      this.next();
+      const call = this.expression();
+      if (call.kind !== "Call") throw new ParseError("spawn expects a function call", this.peek());
+      this.accept(T.Semi);
+      return { kind: "SpawnStmt", call };
+    }
     if (this.at(T.LBrace)) return this.block();
     const expr = this.expression();
     this.accept(T.Semi);

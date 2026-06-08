@@ -49,6 +49,22 @@ fn main() -> i32 {
 }
 ```
 
+## Concurrency (Go-style CSP, implemented — cooperative scheduler)
+```ryz
+fn worker(c, n) { send(c, n * 2); }
+fn main() -> i32 {
+    let c = channel();
+    spawn worker(c, 21);          // queued; runs when main blocks on recv or at exit
+    fmt.println(recv(c));          // 42
+    return 0;
+}
+```
+- `spawn f(args)` — capture args now, queue the call.
+- `channel()` — buffered channel; `send(c, v)`, `recv(c)` (drains the scheduler when empty),
+  `len_chan(c)`, `recv_any([c1, c2, ...])` → `[index, value]` fan-in.
+- Semantics: **cooperative, run-to-completion** tasks (no preemption). True yielding coroutines
+  and `select {}` block sugar are roadmap. `chan<T>` is accepted as a type annotation.
+
 ## Roadmap (not yet implemented)
-- Concurrency: `spawn` / `chan<T>` / `select` (Go-CSP) — keywords reserved, runtime pending.
-- Structs/maps, pattern matching, command substitution at shell layer, native AOT via `zenc`.
+- Preemptive/yielding coroutines; `select {}` block syntax (fan-in builtin `recv_any` exists today).
+- Structs/maps, pattern matching; shell-layer command substitution; native AOT lowering via `zenc`.

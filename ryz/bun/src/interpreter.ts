@@ -50,7 +50,20 @@ export interface IO { write(s: string): void; }
 
 export class Interpreter {
   global = new Env();
+  // Cooperative CSP scheduler: spawned tasks are queued and run to completion
+  // when the program would otherwise block (recv on an empty channel) or at exit.
+  // (True yielding coroutines are roadmap — see GRAMMAR.md.)
+  private taskQueue: Array<() => void> = [];
   constructor(private io: IO = { write: (s) => process.stdout.write(s) }, private args: string[] = []) {}
+
+  private drainScheduler() {
+    let guard = 0;
+    while (this.taskQueue.length) {
+      const task = this.taskQueue.shift()!;
+      task();
+      if (++guard > 1_000_000) throw new RyzError("scheduler runaway (possible deadlock)");
+    }
+  }
 
   private modules(): Map<string, RyzModule> {
     const fmt = new RyzModule("fmt", new Map<string, Value>([
@@ -102,6 +115,28 @@ export class Interpreter {
     g.define("int", new NativeFn("int", (x) => Math.trunc(Number(x))), false);
     g.define("float", new NativeFn("float", (x) => Number(x)), false);
     g.define("range", new NativeFn("range", (n) => Array.from({ length: Math.max(0, Math.trunc(Number(n))) }, (_v, i) => i) as Value[]), false);
+
+    // ---- Go-style CSP concurrency (cooperative) ----
+    g.define("channel", new NativeFn("channel", () => new RyzChannel()), false);
+    g.define("send", new NativeFn("send", (c, v) => {
+      if (!(c instanceof RyzChannel)) throw new RyzError("send expects a channel");
+      c.send(v as Value); return null;
+    }), false);
+    g.define("recv", new NativeFn("recv", (c) => {
+      if (!(c instanceof RyzChannel)) throw new RyzError("recv expects a channel");
+      if (c.buf.length === 0) this.drainScheduler(); // let producers run
+      return c.buf.length ? c.recv() : null;
+    }), false);
+    g.define("len_chan", new NativeFn("len_chan", (c) => (c instanceof RyzChannel ? c.buf.length : 0)), false);
+    // fan-in: returns [index, value] of the first ready channel, or [-1, null] if none after draining.
+    g.define("recv_any", new NativeFn("recv_any", (arr) => {
+      if (!Array.isArray(arr)) throw new RyzError("recv_any expects an array of channels");
+      const ready = () => arr.findIndex((c) => c instanceof RyzChannel && c.buf.length > 0);
+      let i = ready();
+      if (i < 0) { this.drainScheduler(); i = ready(); }
+      if (i < 0) return [-1, null] as Value[];
+      return [i, (arr[i] as RyzChannel).recv()] as Value[];
+    }), false);
   }
 
   run(program: A.Program): number {
@@ -127,8 +162,10 @@ export class Interpreter {
     try { mainFn = main("main"); } catch { return 0; }
     if (mainFn instanceof RyzFn) {
       const r = this.callFn(mainFn, []);
+      this.drainScheduler(); // let any still-queued spawned tasks finish before exit
       return typeof r === "number" ? r : 0;
     }
+    this.drainScheduler();
     return 0;
   }
 
@@ -175,6 +212,17 @@ export class Interpreter {
         return;
       }
       case "FnDecl": env.define(node.name, new RyzFn(node, env), false); return;
+      case "SpawnStmt": {
+        const call = node.call as A.Call;
+        const callee = this.eval(call.callee, env);
+        const args = call.args.map((a) => this.eval(a, env)); // capture args at spawn time
+        this.taskQueue.push(() => {
+          if (callee instanceof RyzFn) this.callFn(callee, args);
+          else if (callee instanceof NativeFn) callee.fn(...args);
+          else throw new RyzError("spawn target is not callable");
+        });
+        return;
+      }
       default: this.eval(node, env); return;
     }
   }

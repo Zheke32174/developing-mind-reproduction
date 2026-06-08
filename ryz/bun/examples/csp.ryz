@@ -1,0 +1,22 @@
+// CSP concurrency: spawn producers, fan-in over a channel (Go-style, cooperative).
+import "std/fmt";
+
+fn worker(c, id, n) {
+    send(c, id * 100 + n);
+}
+
+fn main() -> i32 {
+    let c = channel();
+    // spawn three workers; their sends are queued and drained when main blocks on recv
+    spawn worker(c, 1, 7);
+    spawn worker(c, 2, 7);
+    spawn worker(c, 3, 7);
+
+    let mut i: i32 = 0;
+    while i < 3 {
+        fmt.println("received", recv(c));
+        i = i + 1;
+    }
+    fmt.println("all workers done");
+    return 0;
+}

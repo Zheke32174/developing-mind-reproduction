@@ -119,5 +119,67 @@ test("for-in over string chars", () => {
   eq(r.out, "5\n");
 });
 
+test("CSP: spawn producer + recv (channel)", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    fn producer(c) { send(c, 1); send(c, 2); send(c, 3); }
+    fn main()->i32{
+      let c = channel();
+      spawn producer(c);
+      let mut sum:i32 = 0;
+      let mut i:i32 = 0;
+      while i < 3 { sum = sum + recv(c); i = i + 1; }
+      fmt.println(sum);
+      return 0;
+    }`);
+  eq(r.out, "6\n");
+});
+
+test("CSP: spawned task runs by program exit", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    fn worker(c) { send(c, 42); }
+    fn main()->i32{
+      let c = channel();
+      spawn worker(c);
+      fmt.println(recv(c));
+      return 0;
+    }`);
+  eq(r.out, "42\n");
+});
+
+test("CSP: recv_any fan-in picks a ready channel", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    fn fill(c, v) { send(c, v); }
+    fn main()->i32{
+      let a = channel();
+      let b = channel();
+      spawn fill(b, 99);
+      let res = recv_any([a, b]);
+      fmt.println(res[0], res[1]);
+      return 0;
+    }`);
+  eq(r.out, "1 99\n");
+});
+
+test("CSP: multiple producers fan-in sum", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    fn prod(c, v) { send(c, v); }
+    fn main()->i32{
+      let c = channel();
+      spawn prod(c, 10);
+      spawn prod(c, 20);
+      spawn prod(c, 30);
+      let mut sum:i32 = 0;
+      let mut i:i32 = 0;
+      while i < 3 { sum = sum + recv(c); i = i + 1; }
+      fmt.println(sum);
+      return 0;
+    }`);
+  eq(r.out, "60\n");
+});
+
 console.log(`\nRYZ tests: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

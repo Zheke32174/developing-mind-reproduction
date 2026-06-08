@@ -1,7 +1,7 @@
 // RYZ AST node definitions.
 export type Node =
   | Program | FnDecl | Param | LetStmt | ReturnStmt | IfStmt | WhileStmt | ForStmt
-  | ExprStmt | ImportStmt | DeferStmt | Block
+  | ExprStmt | ImportStmt | DeferStmt | SpawnStmt | Block
   | IntLit | FloatLit | StrLit | BoolLit | Ident | ArrayLit
   | Binary | Unary | Call | Member | Index | Assign;
 
@@ -17,6 +17,7 @@ export interface ForStmt { kind: "ForStmt"; varName: string; iter: Node; body: B
 export interface ExprStmt { kind: "ExprStmt"; expr: Node; }
 export interface ImportStmt { kind: "ImportStmt"; path: string; }
 export interface DeferStmt { kind: "DeferStmt"; expr: Node; }
+export interface SpawnStmt { kind: "SpawnStmt"; call: Node; }
 
 export interface IntLit { kind: "IntLit"; value: number; }
 export interface FloatLit { kind: "FloatLit"; value: number; }
