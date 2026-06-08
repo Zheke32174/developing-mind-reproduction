@@ -4,7 +4,7 @@
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Background Monitoring
 
 SCRIPTS_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction/scripts"
-LAMP_DIR="/substrate/mind/lamp"
+LAMP_DIR="/home/fixxia/lamp"
 
 echo "Running Subconscious Daemon checks..."
 

@@ -64,7 +64,7 @@ safe_run_cli "python3" "$DEVMIND_LOG_DIR/daily_governance.log" \
 
 # Probe opencode status
 safe_run_cli "opencode" "$DEVMIND_LOG_DIR/opencode_status.log" \
-    opencode --pure status
+    opencode --version
 
 # Run conductor suite (calls Gemini internally — skipped if gemini is OUT_OF_USAGE)
 if ! is_cli_skipped "gemini"; then
