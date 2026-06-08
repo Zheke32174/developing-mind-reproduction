@@ -27,4 +27,14 @@ if [ "$worig" == "$wport" ]; then echo "[wordfreq] A/B MATCH ✅"; else
 fi
 rm -f "$WS"
 
+# --- numstats ---
+NS="$(mktemp /tmp/numstats_sample.XXXX)"
+printf '%s\n' "10" "3" "" "27" "5" "  " "8" > "$NS"
+norig="$(bash "$HERE/orig/numstats.sh" "$NS")"
+nport="$("$BUN" "$RYZ_CLI" run "$HERE/numstats.ryz" "$NS")"
+echo "[numstats] original: $norig"
+echo "[numstats] ryz port: $nport"
+[ "$norig" == "$nport" ] && echo "  A/B MATCH ✅" || { echo "  A/B MISMATCH ❌"; fail=1; }
+rm -f "$NS"
+
 [ "$fail" -eq 0 ] && echo "ALL TOOL PORTS A/B-MATCH ✅" || { echo "SOME PORTS DIVERGE ❌"; exit 1; }

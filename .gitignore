@@ -17,3 +17,4 @@ scripts/claude_ralph_log.md
 # Local logs and tmp
 *.log
 .devmind_tmp/
+operator/operator_ledger.jsonl

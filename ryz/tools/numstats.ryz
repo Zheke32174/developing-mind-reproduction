@@ -1,0 +1,34 @@
+// numstats (RYZ port) — same contract as tools/orig/numstats.sh.
+// Exercises structs + the stdlib: count/sum/min/max over integers in a file.
+import "std/fs";
+import "std/str";
+import "std/os";
+import "std/fmt";
+
+struct Stats { count: i64, sum: i64, min: i64, max: i64 }
+
+fn main() -> i32 {
+    let argv = os.args();
+    if len(argv) < 1 {
+        fmt.println("usage: numstats <file>");
+        return 2;
+    }
+    let lines = fs.lines(argv[0]);
+    let mut s = Stats(0, 0, 0, 0);
+    for l in lines {
+        let t = str.trim(l);
+        if t != "" {
+            let v = int(t);
+            if s.count == 0 { s.min = v; s.max = v; }
+            else {
+                if v < s.min { s.min = v; }
+                if v > s.max { s.max = v; }
+            }
+            s.count = s.count + 1;
+            s.sum = s.sum + v;
+        }
+    }
+    fmt.println("count=" + string(s.count) + " sum=" + string(s.sum) +
+                " min=" + string(s.min) + " max=" + string(s.max));
+    return 0;
+}
