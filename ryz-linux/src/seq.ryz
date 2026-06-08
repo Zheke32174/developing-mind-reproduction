@@ -1,0 +1,17 @@
+// coreutil: seq — RYZ Linux native. `seq N` prints 1..N, one per line.
+import "std/os";
+import "std/fmt";
+
+fn main() -> i32 {
+    let args = os.args();
+    if len(args) < 1 {
+        return 1;
+    }
+    let n: i64 = int(args[0]);
+    let mut i: i64 = 1;
+    while i <= n {
+        fmt.println(i);
+        i = i + 1;
+    }
+    return 0;
+}

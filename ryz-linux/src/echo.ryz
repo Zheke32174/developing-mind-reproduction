@@ -1,0 +1,16 @@
+// coreutil: echo — RYZ Linux native. Prints args separated by spaces + newline.
+import "std/os";
+import "std/fmt";
+
+fn main() -> i32 {
+    let args = os.args();
+    let n: i64 = len(args);
+    let mut i: i64 = 0;
+    while i < n {
+        if i > 0 { fmt.print(" "); }
+        fmt.print(args[i]);
+        i = i + 1;
+    }
+    fmt.print("\n");
+    return 0;
+}

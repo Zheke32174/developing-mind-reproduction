@@ -9,10 +9,12 @@ libs where shared). Status: ✅ done & A/B-verified · 🔨 in progress · ⏳ b
 | true  | ✅ | `fn main()->i32{return 0;}` → native ELF; matches /bin/true |
 | false | ✅ | exit 1; matches /bin/false |
 
-## Tier 1 — argv / string utilities  (needs Task #52: argv + string codegen)
-| tool | status |
-|---|---|
-| echo | ⏳ | yes | ⏳ | basename | ⏳ | dirname | ⏳ | seq | ⏳ |
+## Tier 1 — argv / string utilities  (Task #52 native codegen: argv + strings + int landed)
+| tool | status | notes |
+|---|---|---|
+| echo | ✅ | argv join + newline; matches /bin/echo AND interpreter |
+| seq  | ✅ | `seq N` 1..N via int(args[0])→atoll; matches /usr/bin/seq |
+| yes | ⬜ | basename | ⬜ | dirname | ⬜ | (need string slicing) |
 
 ## Tier 2 — file utilities  (needs file-IO codegen)
 | cat | ⬜ | wc | ⬜ | head | ⬜ | tail | ⬜ | nl | ⬜ | tac | ⬜ |
