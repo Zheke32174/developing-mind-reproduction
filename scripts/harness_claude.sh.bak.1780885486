@@ -8,9 +8,7 @@ LOG_FILE="/home/fixxia/lamp/logs/harness_claude.log"
 
 echo "[Claude] Initiating Strategic Reflection..."
 cd "$REPRO_DIR"
-timeout 10m claude --strict-mcp-config --setting-sources= \
-    -p "Perform a deep architectural reflection on the current ecosystem state. Identify structural weaknesses and propose next-gen evolution rounds." \
-    > "$LOG_FILE" 2>&1
+timeout 10m claude -p "Perform a deep architectural reflection on the current ecosystem state. Identify structural weaknesses and propose next-gen evolution rounds." > "$LOG_FILE" 2>&1
 
 if [ $? -eq 0 ]; then
     echo "[Claude] SUCCESS: Reflection complete."

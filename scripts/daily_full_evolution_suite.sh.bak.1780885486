@@ -15,11 +15,8 @@ echo "🌅 Initiating Daily Full Evolution Suite..."
 bash "$SCRIPTS_DIR/substrate-sync.sh"
 
 # 2. Invoke Claude Code CLI (Non-interactive)
-# Lean flags suppress MCP server spawning (~10 npm procs / ~1.7GB) for headless calls.
 echo "⚙️  Invoking Claude Code..."
-timeout 15m claude --strict-mcp-config --setting-sources= \
-    -p "Perform a daily systemic audit of the Developing Mind ecosystem. Review recent logs, identify bottlenecks, and propose evolution rounds." \
-    || echo "Claude Code audit complete."
+timeout 15m claude -p "Perform a daily systemic audit of the Developing Mind ecosystem. Review recent logs, identify bottlenecks, and propose evolution rounds." || echo "Claude Code audit complete."
 
 # 3. Invoke Claude Taskmaster (Non-interactive)
 echo "⚙️  Invoking Claude Taskmaster..."
@@ -38,6 +35,7 @@ opencode --pure status || echo "OpenCode status check complete."
 echo "⚙️  Invoking Hermes..."
 bash "$SCRIPTS_DIR/hermes_60_day_evolution.sh"
 
-# 7. Checkpoint (substrate-sync already ran at step 1; no duplicate commit needed)
-echo "✅ Daily Full Evolution Suite complete."
+# 7. Final Sync & Checkpoint
+echo "✅ Daily Full Evolution Suite complete. Syncing substrate..."
+bash "$SCRIPTS_DIR/substrate-sync.sh"
 python3 "$SCRIPTS_DIR/checkpoint-timer.py" reset
