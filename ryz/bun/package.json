@@ -1,0 +1,13 @@
+{
+  "name": "ryz",
+  "version": "0.2.0",
+  "description": "RYZ — a Frankenstein language (zig/rust/go/typescript+bun/lua/java influences). Bun reference implementation.",
+  "type": "module",
+  "bin": { "ryz": "./src/ryz.ts" },
+  "scripts": {
+    "ryz": "bun run src/ryz.ts",
+    "test": "bun run test/run_tests.ts",
+    "build": "bun build --compile src/ryz.ts --outfile dist/ryz",
+    "build:aesh": "bun run ../../ryz/zenc/zenc.ts build aesh"
+  }
+}

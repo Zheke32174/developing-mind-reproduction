@@ -1,0 +1,8 @@
+// GRAMMAR.md canonical example — now actually executable.
+import "std/fmt";
+
+fn main() -> i32 {
+    let message: string = "Hello from RYZ";
+    fmt.println(message);
+    return 0;
+}
