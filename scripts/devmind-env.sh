@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Environment Resolution
+export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 DEVMIND_REPRO_DIR="$(cd "$DEVMIND_SCRIPT_DIR/.." 2>/dev/null && pwd)"

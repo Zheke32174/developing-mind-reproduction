@@ -2,6 +2,7 @@
 # Developing Mind — Conductor Suite Orchestrator
 # Role: Non-interactively invokes the full Conductor suite to maintain ecosystem coherence.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Verification Loop
+export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 # substrate-sync is owned by the caller (governor/daily-suite); not repeated here to avoid
 # duplicate git commits every governor cycle.
