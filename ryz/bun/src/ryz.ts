@@ -6,10 +6,10 @@ import { Interpreter } from "./interpreter";
 
 const VERSION = "0.2.0";
 
-function runSource(src: string): number {
+function runSource(src: string, args: string[] = []): number {
   const toks = lex(src);
   const program = parse(toks);
-  const interp = new Interpreter();
+  const interp = new Interpreter(undefined, args);
   return interp.run(program);
 }
 
@@ -24,9 +24,9 @@ async function main() {
         return 0;
       case "run": {
         const file = rest[0];
-        if (!file) { console.error("usage: ryz run <file.ryz>"); return 2; }
+        if (!file) { console.error("usage: ryz run <file.ryz> [args...]"); return 2; }
         const src = await Bun.file(file).text();
-        return runSource(src);
+        return runSource(src, rest.slice(1));
       }
       case "eval": {
         const src = rest.join(" ");

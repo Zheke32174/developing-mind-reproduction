@@ -5,7 +5,7 @@ import type * as A from "./ast";
 
 export type Value =
   | number | string | boolean | null
-  | RyzFn | NativeFn | RyzModule | RyzChannel;
+  | RyzFn | NativeFn | RyzModule | RyzChannel | Value[];
 
 export class RyzFn { constructor(public decl: A.FnDecl, public closure: Env) {} }
 export class NativeFn { constructor(public name: string, public fn: (...args: Value[]) => Value) {} }
@@ -50,7 +50,7 @@ export interface IO { write(s: string): void; }
 
 export class Interpreter {
   global = new Env();
-  constructor(private io: IO = { write: (s) => process.stdout.write(s) }) {}
+  constructor(private io: IO = { write: (s) => process.stdout.write(s) }, private args: string[] = []) {}
 
   private modules(): Map<string, RyzModule> {
     const fmt = new RyzModule("fmt", new Map<string, Value>([
@@ -63,11 +63,49 @@ export class Interpreter {
       ["abs", new NativeFn("abs", (x) => Math.abs(Number(x)))],
       ["max", new NativeFn("max", (a, b) => Math.max(Number(a), Number(b)))],
       ["min", new NativeFn("min", (a, b) => Math.min(Number(a), Number(b)))],
+      ["floor", new NativeFn("floor", (x) => Math.floor(Number(x)))],
     ]));
-    return new Map([["fmt", fmt], ["math", math], ["std/fmt", fmt], ["std/math", math]]);
+    const str = new RyzModule("str", new Map<string, Value>([
+      ["upper", new NativeFn("upper", (s) => rstr(s).toUpperCase())],
+      ["lower", new NativeFn("lower", (s) => rstr(s).toLowerCase())],
+      ["trim", new NativeFn("trim", (s) => rstr(s).trim())],
+      ["split", new NativeFn("split", (s, sep) => rstr(s).split(rstr(sep)) as Value[])],
+      ["join", new NativeFn("join", (a, sep) => (a as Value[]).map(rstr).join(rstr(sep)))],
+      ["contains", new NativeFn("contains", (s, sub) => rstr(s).includes(rstr(sub)))],
+      ["replace", new NativeFn("replace", (s, a, b) => rstr(s).split(rstr(a)).join(rstr(b)))],
+      ["len", new NativeFn("len", (s) => rstr(s).length)],
+    ]));
+    const fsm = new RyzModule("fs", new Map<string, Value>([
+      ["read", new NativeFn("read", (p) => { const fs = require("fs"); return fs.readFileSync(rstr(p), "utf8"); })],
+      ["write", new NativeFn("write", (p, c) => { const fs = require("fs"); fs.writeFileSync(rstr(p), rstr(c)); return null; })],
+      ["exists", new NativeFn("exists", (p) => { const fs = require("fs"); return fs.existsSync(rstr(p)); })],
+      ["lines", new NativeFn("lines", (p) => { const fs = require("fs"); return fs.readFileSync(rstr(p), "utf8").split("\n") as Value[]; })],
+    ]));
+    const os = new RyzModule("os", new Map<string, Value>([
+      ["args", new NativeFn("args", () => [...this.args] as Value[])],
+      ["getenv", new NativeFn("getenv", (k) => process.env[rstr(k)] ?? "")],
+    ]));
+    return new Map([
+      ["fmt", fmt], ["math", math], ["str", str], ["fs", fsm], ["os", os],
+      ["std/fmt", fmt], ["std/math", math], ["std/str", str], ["std/fs", fsm], ["std/os", os],
+    ]);
+  }
+
+  private registerGlobals() {
+    const g = this.global;
+    g.define("len", new NativeFn("len", (x) => Array.isArray(x) ? x.length : rstr(x).length), false);
+    g.define("push", new NativeFn("push", (a, v) => { if (!Array.isArray(a)) throw new RyzError("push expects an array"); a.push(v as Value); return a; }), false);
+    // `str` cast is convenient but collides with `import "std/str"` (module also named str).
+    // `string` is the collision-free cast (matches the grammar's `string` type name).
+    g.define("str", new NativeFn("str", (x) => rstr(x)), false);
+    g.define("string", new NativeFn("string", (x) => rstr(x)), false);
+    g.define("int", new NativeFn("int", (x) => Math.trunc(Number(x))), false);
+    g.define("float", new NativeFn("float", (x) => Number(x)), false);
+    g.define("range", new NativeFn("range", (n) => Array.from({ length: Math.max(0, Math.trunc(Number(n))) }, (_v, i) => i) as Value[]), false);
   }
 
   run(program: A.Program): number {
+    this.registerGlobals();
     const mods = this.modules();
     // hoist imports + fn decls
     for (const node of program.body) {
@@ -124,6 +162,18 @@ export class Interpreter {
       case "WhileStmt":
         while (truthy(this.eval(node.cond, env))) this.execBlock(node.body, new Env(env));
         return;
+      case "ForStmt": {
+        const iter = this.eval(node.iter, env);
+        const seq: Value[] = Array.isArray(iter) ? iter : typeof iter === "string" ? iter.split("") : [];
+        if (!Array.isArray(iter) && typeof iter !== "string")
+          throw new RyzError("for-in expects an array or string");
+        for (const item of seq) {
+          const loopEnv = new Env(env);
+          loopEnv.define(node.varName, item, true);
+          this.execBlock(node.body, loopEnv);
+        }
+        return;
+      }
       case "FnDecl": env.define(node.name, new RyzFn(node, env), false); return;
       default: this.eval(node, env); return;
     }
@@ -143,10 +193,23 @@ export class Interpreter {
       case "StrLit": return node.value;
       case "BoolLit": return node.value;
       case "Ident": return env.get(node.name);
+      case "ArrayLit": return node.elements.map((e) => this.eval(e, env));
+      case "Index": {
+        const obj = this.eval(node.object, env);
+        const idx = this.eval(node.index, env);
+        if (Array.isArray(obj)) { const i = Number(idx); return i < 0 ? (obj[obj.length + i] ?? null) : (obj[i] ?? null); }
+        if (typeof obj === "string") { const i = Number(idx); return obj[i < 0 ? obj.length + i : i] ?? ""; }
+        throw new RyzError("cannot index non-array/string");
+      }
       case "Assign": {
         const v = this.eval(node.value, env);
         if (node.target.kind === "Ident") env.set(node.target.name, v);
-        else throw new RyzError("member assignment not yet supported");
+        else if (node.target.kind === "Index") {
+          const obj = this.eval(node.target.object, env);
+          const idx = Number(this.eval(node.target.index, env));
+          if (!Array.isArray(obj)) throw new RyzError("cannot index-assign non-array");
+          obj[idx < 0 ? obj.length + idx : idx] = v;
+        } else throw new RyzError("invalid assignment target");
         return v;
       }
       case "Unary": {
@@ -206,6 +269,7 @@ function truthy(v: Value): boolean {
 
 export function rstr(v: Value): string {
   if (v === null) return "null";
+  if (Array.isArray(v)) return "[" + v.map(rstr).join(", ") + "]";
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v ? "true" : "false";
   if (typeof v === "number") return Number.isInteger(v) ? String(v) : String(v);

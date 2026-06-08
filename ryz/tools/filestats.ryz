@@ -1,0 +1,42 @@
+// filestats (RYZ port) — same contract as tools/orig/filestats.sh.
+// Demonstrates converting a real shell tool to ryz while keeping the original.
+import "std/fs";
+import "std/str";
+import "std/os";
+import "std/fmt";
+
+fn main() -> i32 {
+    let argv = os.args();
+    if len(argv) < 1 {
+        fmt.println("usage: filestats <file>");
+        return 2;
+    }
+    let path = argv[0];
+    let mut lines = fs.lines(path);
+
+    // fs.lines splits on "\n"; drop a single trailing empty (file ended in newline)
+    // to match bash `mapfile -t`.
+    if len(lines) > 0 {
+        if lines[len(lines) - 1] == "" {
+            let mut kept = [];
+            let n: i32 = len(lines) - 1;
+            let mut i: i32 = 0;
+            while i < n {
+                push(kept, lines[i]);
+                i = i + 1;
+            }
+            lines = kept;
+        }
+    }
+
+    let total: i32 = len(lines);
+    let mut nonempty: i32 = 0;
+    let mut longest: i32 = 0;
+    for l in lines {
+        if str.trim(l) != "" { nonempty = nonempty + 1; }
+        if len(l) > longest { longest = len(l); }
+    }
+
+    fmt.println("lines=" + string(total) + " nonempty=" + string(nonempty) + " longest=" + string(longest));
+    return 0;
+}

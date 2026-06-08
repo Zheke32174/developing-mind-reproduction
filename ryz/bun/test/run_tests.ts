@@ -79,5 +79,45 @@ test("return value becomes process exit code", () => {
   eq(r.code, 7);
 });
 
+test("array literal + index + len", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let a=[10,20,30]; fmt.println(a[0], a[2], len(a)); return 0;}`);
+  eq(r.out, "10 30 3\n");
+});
+
+test("negative index", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let a=[1,2,3]; fmt.println(a[-1]); return 0;}`);
+  eq(r.out, "3\n");
+});
+
+test("for-in over array sums", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let mut s:i32=0; for x in [1,2,3,4] { s = s + x; } fmt.println(s); return 0;}`);
+  eq(r.out, "10\n");
+});
+
+test("for-in over range", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let mut s:i32=0; for i in range(5) { s = s + i; } fmt.println(s); return 0;}`);
+  eq(r.out, "10\n");
+});
+
+test("push mutates array", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let mut a=[1]; push(a,2); push(a,3); fmt.println(a, len(a)); return 0;}`);
+  eq(r.out, "[1, 2, 3] 3\n");
+});
+
+test("str module: upper/split/join", () => {
+  const r = runCapture(`import "std/str"; import "std/fmt"; fn main()->i32{ let parts = str.split("a,b,c", ","); fmt.println(str.upper("hi"), parts[1], str.join(parts, "-")); return 0;}`);
+  eq(r.out, "HI b a-b-c\n");
+});
+
+test("index assignment", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let mut a=[1,2,3]; a[1]=99; fmt.println(a); return 0;}`);
+  eq(r.out, "[1, 99, 3]\n");
+});
+
+test("for-in over string chars", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let mut n:i32=0; for c in "hello" { n = n + 1; } fmt.println(n); return 0;}`);
+  eq(r.out, "5\n");
+});
+
 console.log(`\nRYZ tests: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

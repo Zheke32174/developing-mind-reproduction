@@ -17,6 +17,8 @@ export enum T {
   If = "if",
   Else = "else",
   While = "while",
+  For = "for",
+  In = "in",
   Import = "import",
   Export = "export",
   Defer = "defer",
@@ -64,7 +66,7 @@ export interface Token {
 
 const KEYWORDS: Record<string, T> = {
   let: T.Let, mut: T.Mut, fn: T.Fn, return: T.Return, if: T.If, else: T.Else,
-  while: T.While, import: T.Import, export: T.Export, defer: T.Defer,
+  while: T.While, for: T.For, in: T.In, import: T.Import, export: T.Export, defer: T.Defer,
   spawn: T.Spawn, chan: T.Chan, select: T.Select, true: T.True, false: T.False,
 };
 

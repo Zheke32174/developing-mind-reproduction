@@ -1,9 +1,9 @@
 // RYZ AST node definitions.
 export type Node =
-  | Program | FnDecl | Param | LetStmt | ReturnStmt | IfStmt | WhileStmt
+  | Program | FnDecl | Param | LetStmt | ReturnStmt | IfStmt | WhileStmt | ForStmt
   | ExprStmt | ImportStmt | DeferStmt | Block
-  | IntLit | FloatLit | StrLit | BoolLit | Ident
-  | Binary | Unary | Call | Member | Assign;
+  | IntLit | FloatLit | StrLit | BoolLit | Ident | ArrayLit
+  | Binary | Unary | Call | Member | Index | Assign;
 
 export interface Program { kind: "Program"; body: Node[]; }
 export interface Param { kind: "Param"; name: string; type?: string; }
@@ -13,6 +13,7 @@ export interface LetStmt { kind: "LetStmt"; name: string; mutable: boolean; type
 export interface ReturnStmt { kind: "ReturnStmt"; value?: Node; }
 export interface IfStmt { kind: "IfStmt"; cond: Node; then: Block; else?: Block | IfStmt; }
 export interface WhileStmt { kind: "WhileStmt"; cond: Node; body: Block; }
+export interface ForStmt { kind: "ForStmt"; varName: string; iter: Node; body: Block; }
 export interface ExprStmt { kind: "ExprStmt"; expr: Node; }
 export interface ImportStmt { kind: "ImportStmt"; path: string; }
 export interface DeferStmt { kind: "DeferStmt"; expr: Node; }
@@ -22,6 +23,8 @@ export interface FloatLit { kind: "FloatLit"; value: number; }
 export interface StrLit { kind: "StrLit"; value: string; }
 export interface BoolLit { kind: "BoolLit"; value: boolean; }
 export interface Ident { kind: "Ident"; name: string; }
+export interface ArrayLit { kind: "ArrayLit"; elements: Node[]; }
+export interface Index { kind: "Index"; object: Node; index: Node; }
 export interface Binary { kind: "Binary"; op: string; left: Node; right: Node; }
 export interface Unary { kind: "Unary"; op: string; operand: Node; }
 export interface Call { kind: "Call"; callee: Node; args: Node[]; }

@@ -100,6 +100,7 @@ export class Parser {
     if (this.at(T.Return)) return this.returnStmt();
     if (this.at(T.If)) return this.ifStmt();
     if (this.at(T.While)) return this.whileStmt();
+    if (this.at(T.For)) return this.forStmt();
     if (this.at(T.Defer)) { this.next(); const e = this.expression(); this.accept(T.Semi); return { kind: "DeferStmt", expr: e }; }
     if (this.at(T.LBrace)) return this.block();
     const expr = this.expression();
@@ -146,6 +147,15 @@ export class Parser {
     return { kind: "WhileStmt", cond, body };
   }
 
+  private forStmt(): A.ForStmt {
+    this.expect(T.For);
+    const varName = this.expect(T.Ident).value;
+    this.expect(T.In);
+    const iter = this.expression();
+    const body = this.block();
+    return { kind: "ForStmt", varName, iter, body };
+  }
+
   // ---- expressions (Pratt) ----
   private expression(): A.Node { return this.assignment(); }
 
@@ -154,7 +164,7 @@ export class Parser {
     if (this.at(T.Assign)) {
       this.next();
       const value = this.assignment();
-      if (left.kind !== "Ident" && left.kind !== "Member")
+      if (left.kind !== "Ident" && left.kind !== "Member" && left.kind !== "Index")
         throw new ParseError("invalid assignment target", this.peek());
       return { kind: "Assign", target: left, value };
     }
@@ -196,6 +206,11 @@ export class Parser {
         }
         this.expect(T.RParen);
         e = { kind: "Call", callee: e, args };
+      } else if (this.at(T.LBracket)) {
+        this.next();
+        const index = this.expression();
+        this.expect(T.RBracket);
+        e = { kind: "Index", object: e, index };
       } else break;
     }
     return e;
@@ -210,6 +225,15 @@ export class Parser {
       case T.Bool: this.next(); return { kind: "BoolLit", value: t.value === "true" };
       case T.Ident: this.next(); return { kind: "Ident", name: t.value };
       case T.LParen: { this.next(); const e = this.expression(); this.expect(T.RParen); return e; }
+      case T.LBracket: {
+        this.next();
+        const elements: A.Node[] = [];
+        if (!this.at(T.RBracket)) {
+          do { if (this.at(T.RBracket)) break; elements.push(this.expression()); } while (this.accept(T.Comma));
+        }
+        this.expect(T.RBracket);
+        return { kind: "ArrayLit", elements };
+      }
       default: throw new ParseError("expected expression", t);
     }
   }
