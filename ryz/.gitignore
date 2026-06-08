@@ -1,0 +1,7 @@
+# Build artifacts (zenc native binaries — large, reproducible)
+dist/
+# Bun/node deps
+node_modules/
+bun.lockb
+# shell history written by aesh at runtime
+.aesh_history
