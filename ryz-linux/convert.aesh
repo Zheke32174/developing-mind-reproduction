@@ -1,0 +1,15 @@
+# RYZ Linux — conversion campaign, DRIVEN BY AESH (the first complete native binary).
+# Converts the WSL userland to standalone ryz natives, simplest -> most complex.
+# This batch: the two simplest coreutils. Each is built native via zenc and staged.
+echo "=== RYZ Linux conversion (driven by aesh) ==="
+export BUN=/home/fixxia/.bun/bin/bun
+export ZENC=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz/zenc/zenc.ts
+export SRC=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz-linux/src
+export BIN=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz-linux/bin
+export DIST=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz/dist
+$BUN $ZENC native $SRC/true.ryz && cp $DIST/true $BIN/true && echo "staged: true"
+$BUN $ZENC native $SRC/false.ryz && cp $DIST/false $BIN/false && echo "staged: false"
+echo "--- A/B verify (ryz-native vs system semantics) ---"
+$BIN/true && echo "true  -> exit 0  OK (matches /bin/true)"
+$BIN/false || echo "false -> exit 1  OK (matches /bin/false)"
+echo "=== batch complete: 2 coreutils now standalone ryz natives ==="

@@ -1,0 +1,4 @@
+// coreutil: true — RYZ Linux native (converted from /bin/true). Exit 0, always.
+fn main() -> i32 {
+    return 0;
+}

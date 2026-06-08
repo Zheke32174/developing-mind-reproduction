@@ -18,3 +18,5 @@ scripts/claude_ralph_log.md
 *.log
 .devmind_tmp/
 operator/operator_ledger.jsonl
+ryz-linux/bin/
+ryz-linux/lib/
