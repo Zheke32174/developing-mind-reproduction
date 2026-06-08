@@ -1,15 +1,21 @@
 #!/usr/bin/env bash
-# Developing Mind — Hermes Harness (Hive v2)
+# Developing Mind — Hermes Harness (Hive v3: Quota-Aware)
 # Role: Cognitive Boundary Validation & NLSpec Alignment.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability)
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$SCRIPT_DIR/devmind-env.sh"
+
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
-LOG_FILE="/home/fixxia/lamp/logs/harness_hermes.log"
+LOG_FILE="$DEVMIND_LOG_DIR/harness_hermes.log"
 
 echo "[Hermes] Initiating Boundary Validation..."
+# Hermes uses bash scripts directly (no external CLI quota exposure)
+# but check if underlying dependencies are available
+
 cd "$REPRO_DIR"
-# Use the existing evolution script with a verify flag
-bash scripts/hermes_60_day_evolution.sh --verify-only > "$LOG_FILE" 2>&1
+safe_run_cli "bash" "$LOG_FILE" \
+    bash scripts/hermes_60_day_evolution.sh --verify-only
 
 if [ $? -eq 0 ]; then
     echo "[Hermes] SUCCESS: Boundaries verified."

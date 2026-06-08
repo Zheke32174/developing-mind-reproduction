@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Developing Mind — Daily Full Evolution Suite
+# Developing Mind — Daily Full Evolution Suite (v2: Quota-Aware)
 # Role: Orchestrates a daily deep review and evolution cycle across all ecosystem CLIs.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Systemic Evolution
 
 export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$SCRIPT_DIR/devmind-env.sh"
 
 REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
@@ -14,30 +17,39 @@ echo "🌅 Initiating Daily Full Evolution Suite..."
 # 1. Ingest state
 bash "$SCRIPTS_DIR/substrate-sync.sh"
 
-# 2. Invoke Claude Code CLI (Non-interactive)
-# Lean flags suppress MCP server spawning (~10 npm procs / ~1.7GB) for headless calls.
+# 2. Claude Code audit
 echo "⚙️  Invoking Claude Code..."
-timeout 15m claude --strict-mcp-config --setting-sources= \
+safe_run_cli "claude" "$DEVMIND_LOG_DIR/harness_claude.log" \
+    claude --strict-mcp-config --setting-sources= \
     -p "Perform a daily systemic audit of the Developing Mind ecosystem. Review recent logs, identify bottlenecks, and propose evolution rounds." \
     || echo "Claude Code audit complete."
 
-# 3. Invoke Claude Taskmaster (Non-interactive)
-echo "⚙️  Invoking Claude Taskmaster..."
-timeout 10m $TASKMASTER_BIN list all || echo "Taskmaster status check complete."
-timeout 10m $TASKMASTER_BIN next || echo "Taskmaster next task identified."
+# 3. Taskmaster (uses Claude internally — skip if claude is out)
+if ! is_cli_skipped "claude"; then
+    echo "⚙️  Invoking Claude Taskmaster..."
+    safe_run_cli "claude" "$DEVMIND_LOG_DIR/taskmaster.log" \
+        bash -c "$TASKMASTER_BIN list all && $TASKMASTER_BIN next" \
+        || echo "Taskmaster check complete."
+else
+    echo "⏭️  Skipping Taskmaster — claude is OUT_OF_USAGE."
+fi
 
-# 4. Invoke Gemini CLI (Secondary review)
+# 4. Gemini secondary review
 echo "⚙️  Invoking Gemini CLI..."
-timeout 15m gemini -p "Verify Phase 1 Factory Deployment status and sign the Daily Evolution Ledger." || echo "Gemini review complete."
+safe_run_cli "gemini" "$DEVMIND_LOG_DIR/harness_gemini.log" \
+    gemini -p "Verify Phase 1 Factory Deployment status and sign the Daily Evolution Ledger." \
+    || echo "Gemini review complete."
 
-# 5. Invoke OpenCode (GGA Compliance)
+# 5. OpenCode GGA compliance check
 echo "⚙️  Invoking OpenCode..."
-opencode --pure status || echo "OpenCode status check complete."
+safe_run_cli "opencode" "$DEVMIND_LOG_DIR/opencode.log" \
+    opencode --pure status \
+    || echo "OpenCode status check complete."
 
-# 6. Invoke Hermes (Evolution Benchmark)
+# 6. Hermes evolution benchmark
 echo "⚙️  Invoking Hermes..."
-bash "$SCRIPTS_DIR/hermes_60_day_evolution.sh"
+bash "$SCRIPTS_DIR/hermes_60_day_evolution.sh" || echo "Hermes benchmark complete."
 
-# 7. Checkpoint (substrate-sync already ran at step 1; no duplicate commit needed)
+# 7. Checkpoint
 echo "✅ Daily Full Evolution Suite complete."
 python3 "$SCRIPTS_DIR/checkpoint-timer.py" reset
