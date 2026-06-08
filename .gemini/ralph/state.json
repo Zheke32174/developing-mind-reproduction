@@ -1,8 +1,0 @@
-{
-  "active": true,
-  "current_iteration": 1,
-  "max_iterations": 100,
-  "completion_promise": "",
-  "original_prompt": "deliberate based on the available data you have and decide the next 100 meaningful pre post and primary tasks and subtasks and run it as a looping goal until satisfactory conclusion",
-  "started_at": "2026-06-07T11:38:05Z"
-}

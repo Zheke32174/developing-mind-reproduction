@@ -1,12 +1,12 @@
 # Swarm Plan: Cognitive Substrate Expansion
 
 ## Phase 1: Ecosystem Pre-Tasks (Hardening & Analysis)
-- [x] 1.1 Read and verify `GEMINI.md` ecosystem rules.
-- [x] 1.2 Execute `fetch_claude_memory.sh` to verify memory bridge is active.
-- [x] 1.3 Verify Gentleman Guardian Angel (GGA) is executable at `bin/gga`.
+- [ ] 1.1 Read and verify `GEMINI.md` ecosystem rules.
+- [ ] 1.2 Execute `fetch_claude_memory.sh` to verify memory bridge is active.
+- [ ] 1.3 Verify Gentleman Guardian Angel (GGA) is executable at `bin/gga`.
 - [ ] 1.4 Audit `.paper2code_work/` to ensure all 8 target papers are extracted in markdown format.
 - [ ] 1.5 Create a unified `test_runner.py` scaffold in the PSS for future unit tests.
-- [x] 1.6 Verify `substrate-sync.sh` correctly triggers the GGA pipeline.
+- [ ] 1.6 Verify `substrate-sync.sh` correctly triggers the GGA pipeline.
 - [ ] 1.7 Analyze `2511.10621` text to identify core theoretical propositions.
 - [ ] 1.8 Analyze `2303.08769` (GPT-4) text to identify core theoretical propositions.
 - [ ] 1.9 Analyze `2407.17349` text to identify core theoretical propositions.
