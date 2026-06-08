@@ -2,7 +2,7 @@
 export type Node =
   | Program | FnDecl | Param | LetStmt | ReturnStmt | IfStmt | WhileStmt | ForStmt
   | ExprStmt | ImportStmt | DeferStmt | SpawnStmt | Block
-  | IntLit | FloatLit | StrLit | BoolLit | Ident | ArrayLit
+  | IntLit | FloatLit | StrLit | BoolLit | Ident | ArrayLit | MapLit
   | Binary | Unary | Call | Member | Index | Assign;
 
 export interface Program { kind: "Program"; body: Node[]; }
@@ -25,6 +25,7 @@ export interface StrLit { kind: "StrLit"; value: string; }
 export interface BoolLit { kind: "BoolLit"; value: boolean; }
 export interface Ident { kind: "Ident"; name: string; }
 export interface ArrayLit { kind: "ArrayLit"; elements: Node[]; }
+export interface MapLit { kind: "MapLit"; entries: { key: Node; value: Node }[]; }
 export interface Index { kind: "Index"; object: Node; index: Node; }
 export interface Binary { kind: "Binary"; op: string; left: Node; right: Node; }
 export interface Unary { kind: "Unary"; op: string; operand: Node; }

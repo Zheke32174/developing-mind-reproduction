@@ -1,0 +1,33 @@
+// wordfreq (RYZ port) — same contract as tools/orig/wordfreq.sh.
+// Demonstrates maps + sort: count word frequencies, print "word count" sorted by word.
+import "std/fs";
+import "std/str";
+import "std/os";
+import "std/fmt";
+
+fn main() -> i32 {
+    let argv = os.args();
+    if len(argv) < 1 {
+        fmt.println("usage: wordfreq <file>");
+        return 2;
+    }
+    let raw = fs.read(argv[0]);
+    // normalize all whitespace to single spaces, then split
+    let norm = str.replace(str.replace(raw, "\n", " "), "\t", " ");
+    let parts = str.split(norm, " ");
+
+    let mut freq = map();
+    for w in parts {
+        let t = str.trim(w);
+        if t != "" {
+            if has(freq, t) { freq[t] = freq[t] + 1; }
+            else { freq[t] = 1; }
+        }
+    }
+
+    let ordered = sort(keys(freq));
+    for k in ordered {
+        fmt.println(k + " " + string(freq[k]));
+    }
+    return 0;
+}

@@ -5,7 +5,13 @@ import type * as A from "./ast";
 
 export type Value =
   | number | string | boolean | null
-  | RyzFn | NativeFn | RyzModule | RyzChannel | Value[];
+  | RyzFn | NativeFn | RyzModule | RyzChannel | RyzMap | Value[];
+
+export class RyzMap {
+  m = new Map<string, Value>();
+  get(k: string): Value { return this.m.has(k) ? this.m.get(k)! : null; }
+  set(k: string, v: Value) { this.m.set(k, v); }
+}
 
 export class RyzFn { constructor(public decl: A.FnDecl, public closure: Env) {} }
 export class NativeFn { constructor(public name: string, public fn: (...args: Value[]) => Value) {} }
@@ -106,7 +112,14 @@ export class Interpreter {
 
   private registerGlobals() {
     const g = this.global;
-    g.define("len", new NativeFn("len", (x) => Array.isArray(x) ? x.length : rstr(x).length), false);
+    g.define("len", new NativeFn("len", (x) => x instanceof RyzMap ? x.m.size : Array.isArray(x) ? x.length : rstr(x).length), false);
+    g.define("map", new NativeFn("map", () => new RyzMap()), false);
+    g.define("keys", new NativeFn("keys", (m) => { if (!(m instanceof RyzMap)) throw new RyzError("keys expects a map"); return [...m.m.keys()] as Value[]; }), false);
+    g.define("values", new NativeFn("values", (m) => { if (!(m instanceof RyzMap)) throw new RyzError("values expects a map"); return [...m.m.values()] as Value[]; }), false);
+    g.define("has", new NativeFn("has", (m, k) => { if (!(m instanceof RyzMap)) throw new RyzError("has expects a map"); return m.m.has(rstr(k)); }), false);
+    g.define("del", new NativeFn("del", (m, k) => { if (!(m instanceof RyzMap)) throw new RyzError("del expects a map"); m.m.delete(rstr(k)); return null; }), false);
+    // sort: returns a new array sorted lexicographically by string form (byte-ish, matches `sort` for ASCII).
+    g.define("sort", new NativeFn("sort", (a) => { if (!Array.isArray(a)) throw new RyzError("sort expects an array"); return [...a].sort((x, y) => { const sx = rstr(x), sy = rstr(y); return sx < sy ? -1 : sx > sy ? 1 : 0; }); }), false);
     g.define("push", new NativeFn("push", (a, v) => { if (!Array.isArray(a)) throw new RyzError("push expects an array"); a.push(v as Value); return a; }), false);
     // `str` cast is convenient but collides with `import "std/str"` (module also named str).
     // `string` is the collision-free cast (matches the grammar's `string` type name).
@@ -242,21 +255,28 @@ export class Interpreter {
       case "BoolLit": return node.value;
       case "Ident": return env.get(node.name);
       case "ArrayLit": return node.elements.map((e) => this.eval(e, env));
+      case "MapLit": {
+        const map = new RyzMap();
+        for (const { key, value } of node.entries) map.set(rstr(this.eval(key, env)), this.eval(value, env));
+        return map;
+      }
       case "Index": {
         const obj = this.eval(node.object, env);
         const idx = this.eval(node.index, env);
+        if (obj instanceof RyzMap) return obj.get(rstr(idx));
         if (Array.isArray(obj)) { const i = Number(idx); return i < 0 ? (obj[obj.length + i] ?? null) : (obj[i] ?? null); }
         if (typeof obj === "string") { const i = Number(idx); return obj[i < 0 ? obj.length + i : i] ?? ""; }
-        throw new RyzError("cannot index non-array/string");
+        throw new RyzError("cannot index non-array/string/map");
       }
       case "Assign": {
         const v = this.eval(node.value, env);
         if (node.target.kind === "Ident") env.set(node.target.name, v);
         else if (node.target.kind === "Index") {
           const obj = this.eval(node.target.object, env);
-          const idx = Number(this.eval(node.target.index, env));
-          if (!Array.isArray(obj)) throw new RyzError("cannot index-assign non-array");
-          obj[idx < 0 ? obj.length + idx : idx] = v;
+          const idxVal = this.eval(node.target.index, env);
+          if (obj instanceof RyzMap) { obj.set(rstr(idxVal), v); }
+          else if (Array.isArray(obj)) { const idx = Number(idxVal); obj[idx < 0 ? obj.length + idx : idx] = v; }
+          else throw new RyzError("cannot index-assign non-array/map");
         } else throw new RyzError("invalid assignment target");
         return v;
       }
@@ -317,6 +337,7 @@ function truthy(v: Value): boolean {
 
 export function rstr(v: Value): string {
   if (v === null) return "null";
+  if (v instanceof RyzMap) return "{" + [...v.m.entries()].map(([k, val]) => `${k}: ${rstr(val)}`).join(", ") + "}";
   if (Array.isArray(v)) return "[" + v.map(rstr).join(", ") + "]";
   if (typeof v === "string") return v;
   if (typeof v === "boolean") return v ? "true" : "false";

@@ -30,10 +30,12 @@ fn main() -> i32 {
 ## v0.3.0 — implemented in the Bun reference (`bun/`, runnable via `bin/ryz`)
 Beyond the v0.1 grammar, the working interpreter adds:
 - **Control flow:** `if`/`else if`/`else`, `while`, `for x in <array|string>`, `defer` (LIFO).
-- **Collections:** array literals `[1,2,3]`, indexing `a[i]` (negative ok), index-assignment.
+- **Collections:** array literals `[1,2,3]`, indexing `a[i]` (negative ok), index-assignment;
+  **map literals** `{"k": v}` with `m[k]` get/set, `map()`, `keys`/`values`/`has`/`del`, `sort`.
 - **Mutability:** `let` is immutable; `let mut` / `mut` are reassignable (enforced at runtime).
 - **Operators:** `+ - * / %  < > <= >= == !=  && || !`, Pratt precedence, string `+`.
-- **Builtins (global):** `len`, `push`, `range`, `int`, `float`, `string`/`str`.
+- **Builtins (global):** `len`, `push`, `range`, `int`, `float`, `string`/`str`, `sort`,
+  `map`/`keys`/`values`/`has`/`del`, and CSP `channel`/`send`/`recv`/`recv_any`/`len_chan`.
 - **Stdlib modules:** `std/fmt` (println/print/sprintf), `std/math` (sqrt/abs/min/max/floor),
   `std/str` (upper/lower/trim/split/join/contains/replace/len), `std/fs` (read/write/exists/lines),
   `std/os` (args/getenv).

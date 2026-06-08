@@ -241,6 +241,22 @@ export class Parser {
         this.expect(T.RBracket);
         return { kind: "ArrayLit", elements };
       }
+      case T.LBrace: {
+        // map literal: { key: value, ... }  (blocks are only parsed in statement positions)
+        this.next();
+        const entries: { key: A.Node; value: A.Node }[] = [];
+        if (!this.at(T.RBrace)) {
+          do {
+            if (this.at(T.RBrace)) break;
+            const key = this.expression();
+            this.expect(T.Colon);
+            const value = this.expression();
+            entries.push({ key, value });
+          } while (this.accept(T.Comma));
+        }
+        this.expect(T.RBrace);
+        return { kind: "MapLit", entries };
+      }
       default: throw new ParseError("expected expression", t);
     }
   }

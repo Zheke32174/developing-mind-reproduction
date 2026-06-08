@@ -181,5 +181,36 @@ test("CSP: multiple producers fan-in sum", () => {
   eq(r.out, "60\n");
 });
 
+test("map literal + get + len", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let m = {"a": 1, "b": 2}; fmt.println(m["a"], m["b"], len(m)); return 0;}`);
+  eq(r.out, "1 2 2\n");
+});
+
+test("map set + has + missing key is null", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let mut m = map(); m["x"]=10; fmt.println(m["x"], has(m,"x"), has(m,"y"), m["y"]); return 0;}`);
+  eq(r.out, "10 true false null\n");
+});
+
+test("map keys iteration (word-freq style)", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    fn main()->i32{
+      let words = ["a","b","a","c","b","a"];
+      let mut freq = map();
+      for w in words {
+        if has(freq, w) { freq[w] = freq[w] + 1; }
+        else { freq[w] = 1; }
+      }
+      fmt.println(freq["a"], freq["b"], freq["c"], len(freq));
+      return 0;
+    }`);
+  eq(r.out, "3 2 1 3\n");
+});
+
+test("map del removes key", () => {
+  const r = runCapture(`import "std/fmt"; fn main()->i32{ let mut m={"a":1,"b":2}; del(m,"a"); fmt.println(has(m,"a"), len(m)); return 0;}`);
+  eq(r.out, "false 1\n");
+});
+
 console.log(`\nRYZ tests: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
