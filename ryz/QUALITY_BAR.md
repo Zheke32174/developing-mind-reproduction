@@ -38,8 +38,10 @@ Phase 6 (factory hivemind self-orchestrated operator) does NOT start until items
 for ryz and aesh, verified by the test suites + `scripts/system_doctor.sh` and reviewed.
 
 ## Current honest status (2026-06-08)
-- ryz: working interpreter, 19 tests, arrays/for/stdlib. **Gaps to bar:** concurrency, structs/
-  maps, error model, perf benchmarks, fuzzing, full spec.
+- ryz: working interpreter, 27 tests, arrays/maps/for/stdlib + CSP concurrency. **Gaps to bar:**
+  structs (#49), error model, fuzzing, full spec, and **perf**. Measured baseline (`bench/bench.sh`,
+  interpreted + bun startup): fib(30) ≈ 18.9s, 1e6-iter loop ≈ 484ms, aesh `-c` ≈ 79ms/call.
+  fib is call-overhead-bound (per-call Env+Map alloc) → interpreter perf is a tracked task (#50).
 - aesh: working shell, 11 tests, native binary via zenc. **Gaps:** globbing, command
   substitution, single-quote literal, job control, structured (Nu) pipes, line-editor polish.
 - ecosystem/OS: stabilization + system_doctor done; cross-device automation + the operator layer

@@ -1,0 +1,10 @@
+// Benchmark workload: recursive fib(30) — exercises calls, recursion, arithmetic.
+import "std/fmt";
+fn fib(n: i64) -> i64 {
+    if n < 2 { return n; }
+    return fib(n - 1) + fib(n - 2);
+}
+fn main() -> i32 {
+    fmt.println(fib(30));
+    return 0;
+}
