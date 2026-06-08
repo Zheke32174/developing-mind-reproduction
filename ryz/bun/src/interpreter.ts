@@ -5,12 +5,16 @@ import type * as A from "./ast";
 
 export type Value =
   | number | string | boolean | null
-  | RyzFn | NativeFn | RyzModule | RyzChannel | RyzMap | Value[];
+  | RyzFn | NativeFn | RyzModule | RyzChannel | RyzMap | RyzStruct | Value[];
 
 export class RyzMap {
   m = new Map<string, Value>();
   get(k: string): Value { return this.m.has(k) ? this.m.get(k)! : null; }
   set(k: string, v: Value) { this.m.set(k, v); }
+}
+
+export class RyzStruct {
+  constructor(public typeName: string, public fieldOrder: string[], public fields: Map<string, Value>) {}
 }
 
 export class RyzFn { constructor(public decl: A.FnDecl, public closure: Env) {} }
@@ -173,11 +177,19 @@ export class Interpreter {
         this.global.define(m.name, m, false);
       } else if (node.kind === "FnDecl") {
         this.global.define(node.name, new RyzFn(node, this.global), false);
+      } else if (node.kind === "StructDecl") {
+        const decl = node;
+        // constructor: positional args -> RyzStruct in declared field order
+        this.global.define(decl.name, new NativeFn(decl.name, (...args) => {
+          const fields = new Map<string, Value>();
+          decl.fields.forEach((f, idx) => fields.set(f, args[idx] ?? null));
+          return new RyzStruct(decl.name, decl.fields, fields);
+        }), false);
       }
     }
     // top-level non-fn statements execute in order
     for (const node of program.body) {
-      if (node.kind !== "ImportStmt" && node.kind !== "FnDecl") this.exec(node, this.global);
+      if (node.kind !== "ImportStmt" && node.kind !== "FnDecl" && node.kind !== "StructDecl") this.exec(node, this.global);
     }
     // entry point
     const main = this.global.get.bind(this.global);
@@ -291,6 +303,12 @@ export class Interpreter {
           if (obj instanceof RyzMap) { obj.set(rstr(idxVal), v); }
           else if (Array.isArray(obj)) { const idx = Number(idxVal); obj[idx < 0 ? obj.length + idx : idx] = v; }
           else throw new RyzError("cannot index-assign non-array/map");
+        } else if (node.target.kind === "Member") {
+          const obj = this.eval(node.target.object, env);
+          if (obj instanceof RyzStruct) {
+            if (!obj.fields.has(node.target.property)) throw new RyzError(`struct '${obj.typeName}' has no field '${node.target.property}'`);
+            obj.fields.set(node.target.property, v);
+          } else throw new RyzError("cannot assign to member of non-struct");
         } else throw new RyzError("invalid assignment target");
         return v;
       }
@@ -308,7 +326,11 @@ export class Interpreter {
           if (m === undefined) throw new RyzError(`module '${obj.name}' has no member '${node.property}'`);
           return m;
         }
-        throw new RyzError(`cannot access '.${node.property}' on non-module`);
+        if (obj instanceof RyzStruct) {
+          if (!obj.fields.has(node.property)) throw new RyzError(`struct '${obj.typeName}' has no field '${node.property}'`);
+          return obj.fields.get(node.property)!;
+        }
+        throw new RyzError(`cannot access '.${node.property}' on non-module/struct`);
       }
       case "Call": {
         const callee = this.eval(node.callee, env);
@@ -351,6 +373,7 @@ function truthy(v: Value): boolean {
 
 export function rstr(v: Value): string {
   if (v === null) return "null";
+  if (v instanceof RyzStruct) return `${v.typeName}{` + v.fieldOrder.map((f) => `${f}: ${rstr(v.fields.get(f) ?? null)}`).join(", ") + "}";
   if (v instanceof RyzMap) return "{" + [...v.m.entries()].map(([k, val]) => `${k}: ${rstr(val)}`).join(", ") + "}";
   if (Array.isArray(v)) return "[" + v.map(rstr).join(", ") + "]";
   if (typeof v === "string") return v;

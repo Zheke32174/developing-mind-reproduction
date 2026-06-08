@@ -212,5 +212,40 @@ test("map del removes key", () => {
   eq(r.out, "false 1\n");
 });
 
+test("struct: construct + field access", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    struct Point { x: i32, y: i32 }
+    fn main()->i32{ let p = Point(3, 4); fmt.println(p.x, p.y); return 0;}`);
+  eq(r.out, "3 4\n");
+});
+
+test("struct: field assignment (mutable binding)", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    struct Counter { n: i64 }
+    fn main()->i32{ let mut c = Counter(0); c.n = c.n + 5; c.n = c.n + 37; fmt.println(c.n); return 0;}`);
+  eq(r.out, "42\n");
+});
+
+test("struct: passed to fn, nested fields", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    struct Vec2 { x: f64, y: f64 }
+    fn lensq(v) -> f64 { return v.x * v.x + v.y * v.y; }
+    fn main()->i32{ let v = Vec2(3, 4); fmt.println(lensq(v)); return 0;}`);
+  eq(r.out, "25\n");
+});
+
+test("struct: rstr form + missing field errors", () => {
+  const r = runCapture(`
+    import "std/fmt";
+    struct P { a: i32, b: i32 }
+    fn main()->i32{ let p = P(1, 2); fmt.println(p); return 0;}`);
+  eq(r.out, "P{a: 1, b: 2}\n");
+  const r2 = runCapture(`struct P { a: i32 } fn main()->i32{ let p=P(1); let z = p.zzz; return 0;}`);
+  if (!r2.error?.includes("no field")) throw new Error("expected missing-field error, got: " + r2.error);
+});
+
 console.log(`\nRYZ tests: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

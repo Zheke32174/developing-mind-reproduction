@@ -25,6 +25,7 @@ export enum T {
   Spawn = "spawn",
   Chan = "chan",
   Select = "select",
+  Struct = "struct",
   True = "true",
   False = "false",
   // punctuation / operators
@@ -67,7 +68,7 @@ export interface Token {
 const KEYWORDS: Record<string, T> = {
   let: T.Let, mut: T.Mut, fn: T.Fn, return: T.Return, if: T.If, else: T.Else,
   while: T.While, for: T.For, in: T.In, import: T.Import, export: T.Export, defer: T.Defer,
-  spawn: T.Spawn, chan: T.Chan, select: T.Select, true: T.True, false: T.False,
+  spawn: T.Spawn, chan: T.Chan, select: T.Select, struct: T.Struct, true: T.True, false: T.False,
 };
 
 export class LexError extends Error {

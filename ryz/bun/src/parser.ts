@@ -38,11 +38,27 @@ export class Parser {
 
   private declaration(): A.Node {
     if (this.at(T.Import)) return this.importStmt();
+    if (this.at(T.Struct)) return this.structDecl();
     let exported = false;
     if (this.at(T.Export)) { this.next(); exported = true; }
     if (this.at(T.Fn)) return this.fnDecl(exported);
     if (exported) throw new ParseError("export must precede fn", this.peek());
     return this.statement();
+  }
+
+  private structDecl(): A.StructDecl {
+    this.expect(T.Struct);
+    const name = this.expect(T.Ident).value;
+    this.expect(T.LBrace);
+    const fields: string[] = [];
+    while (!this.at(T.RBrace) && !this.at(T.EOF)) {
+      const fname = this.expect(T.Ident).value;
+      if (this.accept(T.Colon)) this.typeName(); // type annotation is parsed but ignored at runtime
+      fields.push(fname);
+      if (!this.accept(T.Comma)) { /* allow newline-separated; loop continues */ }
+    }
+    this.expect(T.RBrace);
+    return { kind: "StructDecl", name, fields };
   }
 
   private importStmt(): A.ImportStmt {

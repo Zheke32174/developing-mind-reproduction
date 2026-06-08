@@ -32,6 +32,7 @@ Beyond the v0.1 grammar, the working interpreter adds:
 - **Control flow:** `if`/`else if`/`else`, `while`, `for x in <array|string>`, `defer` (LIFO).
 - **Collections:** array literals `[1,2,3]`, indexing `a[i]` (negative ok), index-assignment;
   **map literals** `{"k": v}` with `m[k]` get/set, `map()`, `keys`/`values`/`has`/`del`, `sort`.
+- **Structs:** `struct Point { x: i32, y: i32 }`; construct `Point(3,4)`; `p.x` get/set.
 - **Mutability:** `let` is immutable; `let mut` / `mut` are reassignable (enforced at runtime).
 - **Operators:** `+ - * / %  < > <= >= == !=  && || !`, Pratt precedence, string `+`.
 - **Builtins (global):** `len`, `push`, `range`, `int`, `float`, `string`/`str`, `sort`,
@@ -69,4 +70,5 @@ fn main() -> i32 {
 
 ## Roadmap (not yet implemented)
 - Preemptive/yielding coroutines; `select {}` block syntax (fan-in builtin `recv_any` exists today).
-- Structs/maps, pattern matching; shell-layer command substitution; native AOT lowering via `zenc`.
+- Pattern matching, generics, traits/methods; native AOT lowering via `zenc` (bytecode VM).
+- (Done: arrays, maps, **structs**, CSP concurrency, shell command substitution + globbing.)
