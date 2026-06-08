@@ -1,2 +1,19 @@
 __pycache__/
 *.pyc
+
+# Ephemeral runtime state (never commit — written by cron each cycle)
+scripts/skip_*
+scripts/quota_state.txt
+scripts/governance_state.json
+scripts/evolution_state.json
+scripts/checkpoint_state.json
+scripts/claude_ralph_state.json
+scripts/claude_ralph_log.md
+
+# Backup files from in-place edits
+*.bak.*
+*.bak
+
+# Local logs and tmp
+*.log
+.devmind_tmp/

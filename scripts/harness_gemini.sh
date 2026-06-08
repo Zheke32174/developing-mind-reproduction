@@ -17,11 +17,12 @@ fi
 
 cd "$REPRO_DIR"
 safe_run_cli "gemini" "$LOG_FILE" \
-    gemini -p "continue ralph loop from state and verify the next 3 tasks in the 100-task swarm"
+    gemini "${DEVMIND_GEMINI_FLAGS[@]}" \
+    -p "continue ralph loop from state and verify the next 3 tasks in the 100-task swarm"
 
 if [ $? -eq 0 ]; then
     echo "[Gemini] SUCCESS: Tasks processed."
 else
-    echo "[Gemini] FAILED or quota hit: See $LOG_FILE"
-    exit 1
+    echo "[Gemini] FAILED or quota hit: See $LOG_FILE (cycle continues)."
+    exit 0
 fi
