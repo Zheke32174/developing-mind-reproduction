@@ -107,3 +107,37 @@
 
 **Was any live operator check required?** No — DNS fix and the governance-message fix
 are both bounded and behavior-preserving; governance remains in PROGRESS mode.
+
+---
+
+## Build Session Report — 2026-06-08 (Claude, /goal: stabilize → ryz/aesh → automation)
+
+Operator set a long-horizon goal. Delivered, tested, committed bricks:
+
+**Stabilization**
+- WSL DNS outage fixed (resolved→dnscrypt drop-in); systemd back to `running`.
+- Discovered `ryz/` was an **orphaned gitlink** (mode 160000, no .gitmodules / no submodule
+  repo) — its contents were never tracked on any clone. Converted to normal tracked files
+  (commit c401502); originals preserved.
+- Found `/usr/local/bin/bun` is a root shim that execs node, shadowing real bun
+  (`~/.bun/bin/bun` 1.3.14). Did NOT modify the shared root file; the ryz launcher + doctor
+  route around it. **Operator decision needed**: repoint the shim to real bun?
+
+**ryz language (was mocks → now real)** — `ryz/bun/` Bun interpreter, `bin/ryz` launcher.
+- lexer/parser/evaluator; immutability, recursion, if/while/for-in, defer, arrays+indexing,
+  std/fmt|math|str|fs|os. **19/19 tests pass.** GRAMMAR.md updated. (commits c401502, e99fe7a)
+
+**aesh shell + zenc** — `ryz/aesh/`, `ryz/zenc/`.
+- aesh: bash pipelines/redirects/logic/`$(())`, zsh/fish completion+history+autosuggest,
+  elvish structured builtins. **11/11 tests.** `zenc build aesh` emits a ~90MB native ELF
+  that runs standalone. (commit 2bf87e8)
+
+**Tool conversion (Phase 5)** — `ryz/tools/filestats.ryz` ports `tools/orig/filestats.sh`;
+`tools/ab_test.sh` proves identical output. Original kept. (commit e99fe7a)
+
+**Automation** — `scripts/system_doctor.sh`: cross-level health (WSL/DNS/container/tunnel/
+ryz+aesh), runs both test suites as gates, `--heal` reapplies the DNS drop-in. Reports HEALTHY.
+
+**What stayed blocked / next:** Termux tunnel down (phone offline). Remaining goal phases:
+ryz concurrency (chan/spawn/select), more tool ports, full Win/Termux automation wiring, and
+the gated factory-hivemind operator. PURPLE_STATE HIGH/MEDIUM items still open.
