@@ -1,6 +1,8 @@
 // AeSH executor — runs the command AST.
-// bash: pipelines/redirects/logic. zsh/fish: history. elvish: structured builtins.
-import { parse, type CommandList, type Pipeline, type SimpleCommand } from "./parser";
+// bash: pipelines/redirects/logic/$(())/$()/globs. zsh/fish: history. elvish: structured builtins.
+import { parse, type CommandList, type Pipeline, type SimpleCommand, type Word } from "./parser";
+import * as fs from "fs";
+import * as path from "path";
 
 export interface ShellState {
   cwd: string;
@@ -15,164 +17,165 @@ export function newState(): ShellState {
   return {
     cwd: process.cwd(),
     env: { ...process.env } as Record<string, string>,
-    lastExit: 0,
-    history: [],
-    shouldExit: false,
-    exitCode: 0,
+    lastExit: 0, history: [], shouldExit: false, exitCode: 0,
   };
 }
 
-// Minimal safe integer arithmetic evaluator for $(( ... )) — no eval/Function.
+export interface IOHandles { out: (s: string) => void; err: (s: string) => void; capture?: boolean; }
+
+// ---- expansion ----
 function evalArith(expr: string): number {
-  let i = 0;
-  const s = expr;
+  let i = 0; const s = expr;
   const skip = () => { while (i < s.length && /\s/.test(s[i])) i++; };
-  function parsePrimary(): number {
+  function prim(): number {
     skip();
-    if (s[i] === "(") { i++; const v = parseAdd(); skip(); if (s[i] === ")") i++; return v; }
-    if (s[i] === "-") { i++; return -parsePrimary(); }
-    if (s[i] === "+") { i++; return parsePrimary(); }
-    let num = "";
-    while (i < s.length && /[0-9]/.test(s[i])) num += s[i++];
+    if (s[i] === "(") { i++; const v = add(); skip(); if (s[i] === ")") i++; return v; }
+    if (s[i] === "-") { i++; return -prim(); }
+    if (s[i] === "+") { i++; return prim(); }
+    let num = ""; while (i < s.length && /[0-9]/.test(s[i])) num += s[i++];
     return num ? parseInt(num, 10) : 0;
   }
-  function parseMul(): number {
-    let v = parsePrimary();
-    for (;;) { skip(); const op = s[i];
-      if (op === "*") { i++; v *= parsePrimary(); }
-      else if (op === "/") { i++; const d = parsePrimary(); v = d === 0 ? 0 : Math.trunc(v / d); }
-      else if (op === "%") { i++; const d = parsePrimary(); v = d === 0 ? 0 : v % d; }
-      else break;
-    }
-    return v;
-  }
-  function parseAdd(): number {
-    let v = parseMul();
-    for (;;) { skip(); const op = s[i];
-      if (op === "+") { i++; v += parseMul(); }
-      else if (op === "-") { i++; v -= parseMul(); }
-      else break;
-    }
-    return v;
-  }
-  return parseAdd();
+  function mul(): number { let v = prim(); for (;;) { skip(); const o = s[i];
+    if (o === "*") { i++; v *= prim(); } else if (o === "/") { i++; const d = prim(); v = d ? Math.trunc(v / d) : 0; }
+    else if (o === "%") { i++; const d = prim(); v = d ? v % d : 0; } else break; } return v; }
+  function add(): number { let v = mul(); for (;;) { skip(); const o = s[i];
+    if (o === "+") { i++; v += mul(); } else if (o === "-") { i++; v -= mul(); } else break; } return v; }
+  return add();
 }
 
-// Expand $((arith)), $VAR, ${VAR}, $?, and leading ~ (HOME).
-export function expand(word: string, st: ShellState): string {
-  let out = word;
+// Expand a single expandable string: $((arith)), $(cmd-subst), ${VAR}, $?, $VAR, leading ~.
+async function expandStr(text: string, st: ShellState, sub: (line: string) => Promise<string>): Promise<string> {
+  let out = text;
   if (out.startsWith("~")) out = (st.env.HOME ?? "") + out.slice(1);
-  // arithmetic first (its inner $vars expand against env)
+
+  // arithmetic $(( ... )) — innermost-first via simple scan
   out = out.replace(/\$\(\((.*?)\)\)/g, (_, e: string) => {
-    const inner = e
-      .replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_m, n) => st.env[n] ?? "0")
-      .replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_m, n) => st.env[n] ?? "0");
+    const inner = e.replace(/\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?/g, (_m, n) => st.env[n] ?? "0");
     try { return String(evalArith(inner)); } catch { return "0"; }
   });
+
+  // command substitution $( ... ) — handle balanced parens, left-to-right
+  for (;;) {
+    const start = out.indexOf("$(");
+    if (start < 0) break;
+    let depth = 0, j = start + 1, end = -1;
+    for (; j < out.length; j++) { if (out[j] === "(") depth++; else if (out[j] === ")") { depth--; if (depth === 0) { end = j; break; } } }
+    if (end < 0) break; // unbalanced; leave as-is
+    const cmd = out.slice(start + 2, end);
+    const captured = (await sub(cmd)).replace(/\n+$/,"");
+    out = out.slice(0, start) + captured + out.slice(end + 1);
+  }
+
   out = out.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, n) => st.env[n] ?? "");
   out = out.replace(/\$\?/g, () => String(st.lastExit));
   out = out.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, n) => st.env[n] ?? "");
   return out;
 }
 
-type BuiltinFn = (args: string[], st: ShellState, io: IOHandles) => number | Promise<number>;
-interface IOHandles { out: (s: string) => void; err: (s: string) => void; capture?: boolean; }
+function globToRegex(g: string): RegExp {
+  let re = "^";
+  for (let k = 0; k < g.length; k++) {
+    const c = g[k];
+    if (c === "*") re += "[^/]*";
+    else if (c === "?") re += "[^/]";
+    else if (c === "[") { let cls = "["; k++; while (k < g.length && g[k] !== "]") cls += g[k++]; cls += "]"; re += cls; }
+    else re += c.replace(/[.+^${}()|\\]/g, "\\$&");
+  }
+  return new RegExp(re + "$");
+}
 
+function globExpand(pattern: string, cwd: string): string[] {
+  const dir = pattern.includes("/") ? path.dirname(pattern) : ".";
+  const base = pattern.includes("/") ? path.basename(pattern) : pattern;
+  const absDir = path.resolve(cwd, dir);
+  let entries: string[];
+  try { entries = fs.readdirSync(absDir); } catch { return [pattern]; }
+  const rx = globToRegex(base);
+  const hits = entries.filter((e) => !e.startsWith(".") && rx.test(e)).sort()
+    .map((e) => (pattern.includes("/") ? path.join(dir, e) : e));
+  return hits.length ? hits : [pattern]; // nullglob off (bash default): leave pattern literal
+}
+
+// Expand one Word into zero+ argv strings (globbing may yield several).
+async function expandWord(word: Word, st: ShellState, sub: (l: string) => Promise<string>): Promise<string[]> {
+  let s = "";
+  for (const seg of word.segs) s += seg.expand ? await expandStr(seg.text, st, sub) : seg.text;
+  if (word.glob && /[*?[]/.test(s)) return globExpand(s, st.cwd);
+  return [s];
+}
+
+async function expandArgv(words: Word[], st: ShellState, sub: (l: string) => Promise<string>): Promise<string[]> {
+  const out: string[] = [];
+  for (const w of words) out.push(...await expandWord(w, st, sub));
+  return out;
+}
+
+// ---- builtins ----
+type BuiltinFn = (args: string[], st: ShellState, io: IOHandles) => number | Promise<number>;
 export const BUILTINS: Record<string, BuiltinFn> = {
   cd: (args, st, io) => {
     const target = args[0] ?? st.env.HOME ?? st.cwd;
-    const path = require("path").resolve(st.cwd, target);
-    try {
-      const fs = require("fs");
-      if (!fs.statSync(path).isDirectory()) { io.err(`cd: not a directory: ${target}\n`); return 1; }
-      st.cwd = path; st.env.PWD = path; return 0;
-    } catch { io.err(`cd: no such directory: ${target}\n`); return 1; }
+    const p = path.resolve(st.cwd, target);
+    try { if (!fs.statSync(p).isDirectory()) { io.err(`cd: not a directory: ${target}\n`); return 1; } st.cwd = p; st.env.PWD = p; return 0; }
+    catch { io.err(`cd: no such directory: ${target}\n`); return 1; }
   },
   pwd: (_a, st, io) => { io.out(st.cwd + "\n"); return 0; },
   exit: (args, st) => { st.shouldExit = true; st.exitCode = args[0] ? parseInt(args[0], 10) || 0 : st.lastExit; return st.exitCode; },
-  export: (args, st, io) => {
-    for (const a of args) {
-      const eq = a.indexOf("=");
-      if (eq >= 0) st.env[a.slice(0, eq)] = a.slice(eq + 1);
-      else if (!(a in st.env)) st.env[a] = "";
-    }
-    return 0;
-  },
+  export: (args, st) => { for (const a of args) { const eq = a.indexOf("="); if (eq >= 0) st.env[a.slice(0, eq)] = a.slice(eq + 1); else if (!(a in st.env)) st.env[a] = ""; } return 0; },
   unset: (args, st) => { for (const a of args) delete st.env[a]; return 0; },
   set: (_a, st, io) => { for (const k of Object.keys(st.env).sort()) io.out(`${k}=${st.env[k]}\n`); return 0; },
   history: (_a, st, io) => { st.history.forEach((h, i) => io.out(`${String(i + 1).padStart(5)}  ${h}\n`)); return 0; },
   echo: (args, _st, io) => { io.out(args.join(" ") + "\n"); return 0; },
-  true: () => 0,
-  false: () => 1,
-  ":": () => 0,
-  help: (_a, _st, io) => {
-    io.out("aesh builtins: cd pwd exit export unset set history echo true false help type\n");
-    io.out("operators: | && || ; > >> <   (bash) | tab-completion + history (zsh/fish)\n");
-    return 0;
-  },
-  type: (args, _st, io) => {
-    for (const a of args) io.out(`${a} is ${a in BUILTINS ? "a shell builtin" : "external"}\n`);
-    return 0;
-  },
+  true: () => 0, false: () => 1, ":": () => 0,
+  help: (_a, _st, io) => { io.out("aesh builtins: cd pwd exit export unset set history echo true false help type\n"); io.out("features: | && || ; > >> <  $(())  $(...)  globs(* ? [])  'literal'  \"expand\"\n"); return 0; },
+  type: (args, _st, io) => { for (const a of args) io.out(`${a} is ${a in BUILTINS ? "a shell builtin" : "external"}\n`); return 0; },
 };
 
-async function runSimple(cmd: SimpleCommand, st: ShellState, io: IOHandles): Promise<number> {
-  const argv = cmd.argv.map((w) => expand(w, st)).filter((s) => s !== "" || cmd.argv.length === 1);
-  if (argv.length === 0) return 0;
-  const name = argv[0];
-  // builtins (only meaningful outside a multi-stage pipe; handled here for single commands)
-  if (name in BUILTINS && cmd.redirects.length === 0) {
-    return await BUILTINS[name](argv.slice(1), st, io);
-  }
-  // external — single command, inherit stdio, honor redirects
-  return await spawnExternal([cmd], st, io);
+// subshell: run a line capturing stdout, return it (for $( ... )).
+async function subshell(line: string, st: ShellState): Promise<string> {
+  let buf = "";
+  const io: IOHandles = { out: (s) => (buf += s), err: () => {}, capture: true };
+  try { await execList(parse(line.trim()), st, io); } catch { /* leave partial */ }
+  return buf;
 }
 
-// Spawn a pipeline of external commands; connect stdout->stdin; apply redirects on ends.
-async function spawnExternal(cmds: SimpleCommand[], st: ShellState, io: IOHandles): Promise<number> {
-  const fs = require("fs");
-  const procs: any[] = [];
-  let prevStdout: any = "inherit";
-  for (let idx = 0; idx < cmds.length; idx++) {
-    const c = cmds[idx];
-    const argv = c.argv.map((w) => expand(w, st)).filter((s, i) => s !== "" || (i === 0));
-    const isLast = idx === cmds.length - 1;
+async function runSimple(cmd: SimpleCommand, st: ShellState, io: IOHandles): Promise<number> {
+  const sub = (l: string) => subshell(l, st);
+  const argv = await expandArgv(cmd.argv, st, sub);
+  if (argv.length === 0) return 0;
+  const name = argv[0];
+  if (name in BUILTINS && cmd.redirects.length === 0) return await BUILTINS[name](argv.slice(1), st, io);
+  return await spawnExternal([{ cmd, argv }], st, io);
+}
 
-    // In capture mode we pipe the final stdout/stderr and forward through io
-    // (so -c/script/test output is observable). Interactive REPL uses inherit
-    // so full-screen TTY programs keep working.
+async function spawnExternal(stages: { cmd: SimpleCommand; argv: string[] }[], st: ShellState, io: IOHandles): Promise<number> {
+  const sub = (l: string) => subshell(l, st);
+  const procs: { proc: any; isLast: boolean; redirectedOut: boolean }[] = [];
+  let prevStdout: any = "inherit";
+  for (let idx = 0; idx < stages.length; idx++) {
+    const { cmd } = stages[idx];
+    const argv = stages[idx].argv;
+    const isLast = idx === stages.length - 1;
     let redirectedOut = false;
     let stdin: any = idx === 0 ? "inherit" : prevStdout;
     let stdout: any = isLast ? (io.capture ? "pipe" : "inherit") : "pipe";
     let stderr: any = io.capture ? "pipe" : "inherit";
-
-    // redirects (a file redirect overrides capture for that stream)
-    for (const r of c.redirects) {
-      if (r.op === "<") stdin = fs.openSync(expand(r.target, st), "r");
-      else if (r.op === ">") { stdout = fs.openSync(expand(r.target, st), "w"); redirectedOut = true; }
-      else if (r.op === ">>") { stdout = fs.openSync(expand(r.target, st), "a"); redirectedOut = true; }
+    for (const r of cmd.redirects) {
+      const tgt = (await expandWord(r.target, st, sub))[0];
+      if (r.op === "<") stdin = fs.openSync(tgt, "r");
+      else if (r.op === ">") { stdout = fs.openSync(tgt, "w"); redirectedOut = true; }
+      else if (r.op === ">>") { stdout = fs.openSync(tgt, "a"); redirectedOut = true; }
     }
-
     let proc: any;
-    try {
-      proc = Bun.spawn(argv, { cwd: st.cwd, env: st.env, stdin, stdout, stderr });
-    } catch (e) {
-      io.err(`aesh: ${argv[0]}: ${(e as Error).message}\n`);
-      return 127;
-    }
+    try { proc = Bun.spawn(argv, { cwd: st.cwd, env: st.env, stdin, stdout, stderr }); }
+    catch (e) { io.err(`aesh: ${argv[0]}: ${(e as Error).message}\n`); return 127; }
     procs.push({ proc, isLast, redirectedOut });
-    prevStdout = proc.stdout; // ReadableStream for next stage
+    prevStdout = proc.stdout;
   }
-
-  // Drain captured streams concurrently to avoid deadlock, then await exits.
   const drains: Promise<void>[] = [];
   for (const { proc, isLast, redirectedOut } of procs) {
-    if (io.capture && proc.stderr && typeof proc.stderr !== "number") {
-      drains.push(new Response(proc.stderr).text().then((t) => { if (t) io.err(t); }));
-    }
-    if (io.capture && isLast && !redirectedOut && proc.stdout && typeof proc.stdout !== "number") {
-      drains.push(new Response(proc.stdout).text().then((t) => { if (t) io.out(t); }));
-    }
+    if (io.capture && proc.stderr && typeof proc.stderr !== "number") drains.push(new Response(proc.stderr).text().then((t) => { if (t) io.err(t); }));
+    if (io.capture && isLast && !redirectedOut && proc.stdout && typeof proc.stdout !== "number") drains.push(new Response(proc.stdout).text().then((t) => { if (t) io.out(t); }));
   }
   let code = 0;
   for (const { proc } of procs) code = await proc.exited;
@@ -182,24 +185,24 @@ async function spawnExternal(cmds: SimpleCommand[], st: ShellState, io: IOHandle
 
 async function runPipeline(pl: Pipeline, st: ShellState, io: IOHandles): Promise<number> {
   if (pl.commands.length === 1) return runSimple(pl.commands[0], st, io);
-  // multi-stage: run all as external (echo/printf exist as /bin too)
-  return spawnExternal(pl.commands, st, io);
+  const sub = (l: string) => subshell(l, st);
+  const stages = [];
+  for (const c of pl.commands) stages.push({ cmd: c, argv: await expandArgv(c.argv, st, sub) });
+  return spawnExternal(stages, st, io);
 }
 
 export async function execList(list: CommandList, st: ShellState, io: IOHandles): Promise<number> {
   let code = st.lastExit;
-  let skipUntilNext = false;
-  for (let i = 0; i < list.items.length; i++) {
-    const item = list.items[i];
-    if (!skipUntilNext) {
+  let skip = false;
+  for (const item of list.items) {
+    if (!skip) {
       code = await runPipeline(item.pipeline, st, io);
       st.lastExit = code;
       if (st.shouldExit) return st.exitCode;
     }
-    // decide whether to run the next based on this op
-    if (item.op === "&&") skipUntilNext = code !== 0;
-    else if (item.op === "||") skipUntilNext = code === 0;
-    else skipUntilNext = false;
+    if (item.op === "&&") skip = code !== 0;
+    else if (item.op === "||") skip = code === 0;
+    else skip = false;
   }
   return code;
 }

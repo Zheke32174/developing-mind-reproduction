@@ -8,6 +8,7 @@ A working shell that recombines five shells, compiled to a **native binary** by 
 | Zsh | tab-completion (commands + files), persistent history | ✅ implemented |
 | Fish | history-prefix autosuggest (accept with → at line end) | ✅ implemented |
 | Elvish | structured builtins (cd/export/set/history/type) | ✅ implemented |
+| Bash (v0.2) | command substitution `$(...)`, globbing `* ? []`, single-quote literal | ✅ implemented |
 | Nu | dataframe/structured pipes | 🔜 roadmap |
 
 ## Run
@@ -37,5 +38,5 @@ A working shell that recombines five shells, compiled to a **native binary** by 
 - `src/aesh.ts` — entry/REPL (readline completer + history + keypress autosuggest).
 
 ## Known limitations / roadmap
-- Single-quoted `$` should be literal (currently expands) — needs quote-tracking in the tokenizer.
-- Command substitution `$(...)`, globbing `*`, job control `&`, structured (Nu) pipes — planned.
+- Single-quote literal, command substitution `$(...)`, and globbing `* ? []` are **done** (v0.2,
+  17 tests). Remaining: job control `&`, structured (Nu) pipes, brace expansion, here-docs.

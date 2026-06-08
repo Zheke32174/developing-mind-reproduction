@@ -85,5 +85,50 @@ await test("history records commands", async () => {
   eq(st.history.length, 2);
 });
 
+await test("single-quote is literal (no $ expansion)", async () => {
+  const c = capture(); const st = newState();
+  await runLine("export NAME=ryz", st, c.io);
+  await runLine("echo '$NAME and $((1+1))'", st, c.io);
+  eq(c.get(), "$NAME and $((1+1))\n");
+});
+
+await test("double-quote expands", async () => {
+  const c = capture(); const st = newState();
+  await runLine("export NAME=ryz", st, c.io);
+  await runLine('echo "hi $NAME"', st, c.io);
+  eq(c.get(), "hi ryz\n");
+});
+
+await test("command substitution $(...)", async () => {
+  const c = capture(); const st = newState();
+  await runLine("echo start-$(echo mid)-end", st, c.io);
+  eq(c.get(), "start-mid-end\n");
+});
+
+await test("nested-ish command substitution with pipe", async () => {
+  const c = capture(); const st = newState();
+  await runLine('echo "[$(echo hello | tr a-z A-Z)]"', st, c.io);
+  eq(c.get(), "[HELLO]\n");
+});
+
+await test("globbing expands * against cwd", async () => {
+  const os = await import("os"); const fsm = await import("fs"); const pth = await import("path");
+  const dir = fsm.mkdtempSync(pth.join(os.tmpdir(), "aeshglob-"));
+  fsm.writeFileSync(pth.join(dir, "a.glb"), ""); fsm.writeFileSync(pth.join(dir, "b.glb"), ""); fsm.writeFileSync(pth.join(dir, "c.other"), "");
+  const c = capture(); const st = newState(); st.cwd = dir;
+  await runLine("echo *.glb", st, c.io);
+  eq(c.get(), "a.glb b.glb\n");
+  fsm.rmSync(dir, { recursive: true, force: true });
+});
+
+await test("glob with no match stays literal (nullglob off)", async () => {
+  const os = await import("os"); const fsm = await import("fs"); const pth = await import("path");
+  const dir = fsm.mkdtempSync(pth.join(os.tmpdir(), "aeshnoglob-"));
+  const c = capture(); const st = newState(); st.cwd = dir;
+  await runLine("echo *.nope", st, c.io);
+  eq(c.get(), "*.nope\n");
+  fsm.rmSync(dir, { recursive: true, force: true });
+});
+
 console.log(`\nAeSH tests: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
