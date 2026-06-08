@@ -68,6 +68,18 @@ fn main() -> i32 {
 - Semantics: **cooperative, run-to-completion** tasks (no preemption). True yielding coroutines
   and `select {}` block sugar are roadmap. `chan<T>` is accepted as a type annotation.
 
+## Shared libraries & FFI (LIBS) — implemented in the native backend
+```ryz
+// declare a symbol provided by a ryz .so (or any C-ABI library)
+extern fn add(a: i64, b: i64) -> i64;
+fn main() -> i32 { fmt.println(add(20, 22)); return 0; }
+```
+- `export fn` → exported C-ABI symbol when built with `zenc lib x.ryz` (→ `libx.so`).
+- `extern fn name(...) -> T;` → a prototype for a symbol linked from a `.so`.
+- `zenc native prog.ryz --lib mathlib` links `libmathlib.so`. ryz programs thus build on ryz libs.
+- **Directionality** (see `DIRECTIONALITY.md`): the `.so` is consumable by *any* language
+  (bi-directional out); `.ryz` source still requires the ryz toolchain (mono-directional in).
+
 ## Roadmap (not yet implemented)
 - Preemptive/yielding coroutines; `select {}` block syntax (fan-in builtin `recv_any` exists today).
 - Pattern matching, generics, traits/methods; native AOT lowering via `zenc` (bytecode VM).

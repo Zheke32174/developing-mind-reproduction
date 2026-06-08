@@ -7,7 +7,7 @@ export type Node =
 
 export interface Program { kind: "Program"; body: Node[]; }
 export interface Param { kind: "Param"; name: string; type?: string; }
-export interface FnDecl { kind: "FnDecl"; name: string; params: Param[]; retType?: string; body: Block; exported: boolean; }
+export interface FnDecl { kind: "FnDecl"; name: string; params: Param[]; retType?: string; body: Block; exported: boolean; extern?: boolean; }
 export interface Block { kind: "Block"; body: Node[]; }
 export interface LetStmt { kind: "LetStmt"; name: string; mutable: boolean; type?: string; value: Node; }
 export interface ReturnStmt { kind: "ReturnStmt"; value?: Node; }

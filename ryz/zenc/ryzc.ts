@@ -44,6 +44,7 @@ class Codegen {
     // emit fn bodies first (sets usesArgs), then assemble with the right header/main sig
     const bodies: string[] = [];
     for (const f of fns) {
+      if (f.extern) continue; // extern fns are provided by a linked .so — prototype only
       if (f.name === "main" && mode === "lib") continue; // libs don't emit main
       bodies.push(this.emitFn(f, mode));
     }

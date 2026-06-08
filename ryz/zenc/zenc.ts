@@ -49,7 +49,8 @@ async function gcc(args: string[]): Promise<number> {
 }
 
 // ryz -> C -> native ELF (executable). No bun/node at runtime.
-async function buildNative(file: string): Promise<number> {
+// libs: ryz shared libraries (by base name) to link, e.g. ["mathlib"] -> -lmathlib from DIST.
+async function buildNative(file: string, libs: string[] = []): Promise<number> {
   const src = await Bun.file(file).text();
   const base = path.basename(file).replace(/\.ryz$/, "");
   fs.mkdirSync(DIST, { recursive: true });
@@ -57,8 +58,10 @@ async function buildNative(file: string): Promise<number> {
   const outBin = path.join(DIST, base);
   fs.writeFileSync(cFile, ryzToC(src, "exec"));
   console.log(`zenc: ryz -> C: ${cFile}`);
-  const code = await gcc(["-O2", "-std=c11", "-o", outBin, cFile]);
-  if (code === 0) { fs.chmodSync(outBin, 0o755); console.log(`zenc: native ELF -> ${outBin}`); }
+  const linkArgs: string[] = [];
+  if (libs.length) { linkArgs.push("-L", DIST, "-Wl,-rpath," + DIST); for (const l of libs) linkArgs.push("-l" + l); }
+  const code = await gcc(["-O2", "-std=c11", "-o", outBin, cFile, ...linkArgs]);
+  if (code === 0) { fs.chmodSync(outBin, 0o755); console.log(`zenc: native ELF -> ${outBin}${libs.length ? " (linked: " + libs.join(", ") + ")" : ""}`); }
   return code;
 }
 
@@ -80,8 +83,11 @@ async function main(): Promise<number> {
   const [cmd, arg] = process.argv.slice(2);
   switch (cmd) {
     case "native": {
-      if (!arg) { console.error("usage: zenc native <file.ryz>"); return 2; }
-      return buildNative(arg);
+      if (!arg) { console.error("usage: zenc native <file.ryz> [--lib NAME ...]"); return 2; }
+      const rest = process.argv.slice(2);
+      const libs: string[] = [];
+      for (let i = 0; i < rest.length; i++) if (rest[i] === "--lib" && rest[i + 1]) libs.push(rest[++i]);
+      return buildNative(arg, libs);
     }
     case "lib": {
       if (!arg) { console.error("usage: zenc lib <file.ryz>"); return 2; }

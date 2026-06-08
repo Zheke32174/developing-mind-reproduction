@@ -1,0 +1,15 @@
+// A RYZ program that LINKS a ryz shared library (libmathlib.so) via extern fns.
+// Proves ryz builds on its own LIBS: ryz -> ryz, natively linked.
+import "std/fmt";
+
+extern fn add(a: i64, b: i64) -> i64;
+extern fn mul(a: i64, b: i64) -> i64;
+extern fn fib(n: i64) -> i64;
+
+fn main() -> i32 {
+    fmt.println("ryz program using libmathlib.so:");
+    fmt.println("add(20,22) =", add(20, 22));
+    fmt.println("mul(6,7)   =", mul(6, 7));
+    fmt.println("fib(20)    =", fib(20));
+    return 0;
+}

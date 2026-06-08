@@ -39,6 +39,7 @@ export class Parser {
   private declaration(): A.Node {
     if (this.at(T.Import)) return this.importStmt();
     if (this.at(T.Struct)) return this.structDecl();
+    if (this.at(T.Extern)) return this.externFnDecl();
     let exported = false;
     if (this.at(T.Export)) { this.next(); exported = true; }
     if (this.at(T.Fn)) return this.fnDecl(exported);
@@ -87,6 +88,29 @@ export class Parser {
     if (this.accept(T.Arrow)) retType = this.typeName();
     const body = this.block();
     return { kind: "FnDecl", name, params, retType, body, exported };
+  }
+
+  // extern fn name(params) -> ret;   — a symbol provided by a ryz shared library (.so).
+  private externFnDecl(): A.FnDecl {
+    this.expect(T.Extern);
+    this.expect(T.Fn);
+    const name = this.expect(T.Ident).value;
+    this.expect(T.LParen);
+    const params: A.Param[] = [];
+    if (!this.at(T.RParen)) {
+      do {
+        if (this.at(T.RParen)) break;
+        const pn = this.expect(T.Ident).value;
+        let type: string | undefined;
+        if (this.accept(T.Colon)) type = this.typeName();
+        params.push({ kind: "Param", name: pn, type });
+      } while (this.accept(T.Comma));
+    }
+    this.expect(T.RParen);
+    let retType: string | undefined;
+    if (this.accept(T.Arrow)) retType = this.typeName();
+    this.accept(T.Semi);
+    return { kind: "FnDecl", name, params, retType, body: { kind: "Block", body: [] }, exported: true, extern: true };
   }
 
   // Type name: ident, with optional chan<T> / generic <...> and [] suffix.
