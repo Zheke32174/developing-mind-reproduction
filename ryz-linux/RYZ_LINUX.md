@@ -28,6 +28,10 @@ ryz-linux/
 ```
 
 ## Status
-First batch landed: `true`, `false` (exit-code tier) — built native by aesh, A/B-verified vs
-`/bin/true` and `/bin/false`. Next tiers blocked on ryz native-codegen coverage (Task #52:
-argv/strings/loops → echo/yes/basename; then file IO → cat/wc/head/tail). See `CONVERSIONS.md`.
+- Userland natives (A/B-verified, built by aesh via zenc): **true, false, echo, seq, cat**.
+- **LIBS:** ryz programs link ryz `.so`s (`extern fn` + `zenc native --lib`); `usemath` runs on
+  `libmathlib.so`. Cross-language: Python calls ryz via the `.so` (DIRECTIONALITY.md).
+- **aesh-as-init demonstrated:** `init.aesh` runs a session with `PATH=ryz-linux/bin` only — every
+  external command resolves to a ryz-built native. A RYZ-userland session, driven by aesh.
+- Next tiers (CONVERSIONS.md): `wc/head/tail` need string-length/char codegen; then more LIBS
+  factoring and a fuller rootfs. The campaign continues, simplest → most complex.

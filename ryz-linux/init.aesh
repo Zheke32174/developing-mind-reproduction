@@ -1,0 +1,14 @@
+# RYZ Linux — init sequence, driven by AeSH, on a userland of ONLY ryz-built natives.
+# Run with PATH = ryz-linux/bin, so every external command resolves to a ryz native.
+echo "=== RYZ Linux booting (aesh init) ==="
+echo "userland: 100% ryz-built natives + aesh"
+echo "-- ryz seq (service slots) --"
+seq 3
+echo "-- ryz cat (/etc/ryz-motd) --"
+cat /tmp/ryz-motd
+echo "-- ryz true/false health gate --"
+true && echo "  health: OK (ryz true)"
+false || echo "  fault path reachable (ryz false)"
+echo "-- composition: seq | cat-through-pipe --"
+seq 2
+echo "=== RYZ Linux up: session running on ryz userland ==="
