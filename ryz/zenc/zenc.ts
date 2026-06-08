@@ -7,6 +7,7 @@
 //   zenc version
 import * as path from "path";
 import * as fs from "fs";
+import { ryzToC } from "./ryzc";
 
 const ZENC_DIR = path.dirname(new URL(import.meta.url).pathname);
 const RYZ_HOME = path.resolve(ZENC_DIR, "..");
@@ -42,9 +43,50 @@ async function compile(name: string): Promise<number> {
   return code;
 }
 
+async function gcc(args: string[]): Promise<number> {
+  const proc = Bun.spawn(["gcc", ...args], { stdout: "inherit", stderr: "inherit" });
+  return proc.exited;
+}
+
+// ryz -> C -> native ELF (executable). No bun/node at runtime.
+async function buildNative(file: string): Promise<number> {
+  const src = await Bun.file(file).text();
+  const base = path.basename(file).replace(/\.ryz$/, "");
+  fs.mkdirSync(DIST, { recursive: true });
+  const cFile = path.join(DIST, base + ".c");
+  const outBin = path.join(DIST, base);
+  fs.writeFileSync(cFile, ryzToC(src, "exec"));
+  console.log(`zenc: ryz -> C: ${cFile}`);
+  const code = await gcc(["-O2", "-std=c11", "-o", outBin, cFile]);
+  if (code === 0) { fs.chmodSync(outBin, 0o755); console.log(`zenc: native ELF -> ${outBin}`); }
+  return code;
+}
+
+// ryz -> C -> shared library (.so). Exports `export fn`s as C-ABI symbols. LIBS.
+async function buildLib(file: string): Promise<number> {
+  const src = await Bun.file(file).text();
+  const base = path.basename(file).replace(/\.ryz$/, "");
+  fs.mkdirSync(DIST, { recursive: true });
+  const cFile = path.join(DIST, "lib" + base + ".c");
+  const outSo = path.join(DIST, "lib" + base + ".so");
+  fs.writeFileSync(cFile, ryzToC(src, "lib"));
+  console.log(`zenc: ryz -> C (lib): ${cFile}`);
+  const code = await gcc(["-O2", "-std=c11", "-shared", "-fPIC", "-o", outSo, cFile]);
+  if (code === 0) console.log(`zenc: shared library -> ${outSo}`);
+  return code;
+}
+
 async function main(): Promise<number> {
   const [cmd, arg] = process.argv.slice(2);
   switch (cmd) {
+    case "native": {
+      if (!arg) { console.error("usage: zenc native <file.ryz>"); return 2; }
+      return buildNative(arg);
+    }
+    case "lib": {
+      if (!arg) { console.error("usage: zenc lib <file.ryz>"); return 2; }
+      return buildLib(arg);
+    }
     case "build": {
       if (!arg || arg === "all") {
         let rc = 0;

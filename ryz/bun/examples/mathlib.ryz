@@ -1,0 +1,14 @@
+// A RYZ shared library — exported fns become C-ABI symbols in libmathlib.so.
+// Proves ryz can ship its own LIBS, independent of its interpreter.
+export fn add(a: i64, b: i64) -> i64 {
+    return a + b;
+}
+
+export fn mul(a: i64, b: i64) -> i64 {
+    return a * b;
+}
+
+export fn fib(n: i64) -> i64 {
+    if n < 2 { return n; }
+    return fib(n - 1) + fib(n - 2);
+}
