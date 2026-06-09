@@ -7,7 +7,12 @@ import os
 import re
 import sys
 
-SCRIPTS_DIR = "/mnt/c/Users/Fixxia/developing-mind-reproduction/scripts"
+# Use canonical environment variables
+repro_dir = os.environ.get("DEVMIND_REPRO_DIR")
+if not repro_dir:
+    repro_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+SCRIPTS_DIR = os.path.join(repro_dir, "scripts")
 
 def apply_hotfixes(error_text):
     print("🧠 Nerve Fixer: Analyzing error patterns...")

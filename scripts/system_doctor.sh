@@ -5,6 +5,12 @@
 # Exit 0 = all green, 1 = at least one RED.  set -uo pipefail (no -e: never abort mid-scan).
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+# shellcheck source=devmind-env.sh
+if [ -f "$SCRIPT_DIR/devmind-env.sh" ]; then
+    source "$SCRIPT_DIR/devmind-env.sh"
+fi
+
 HEAL=0; [ "${1:-}" = "--heal" ] && HEAL=1
 RED=0; WARN=0
 ok()   { printf '  \033[32m✓\033[0m %s\n' "$1"; }
@@ -12,8 +18,9 @@ warn() { printf '  \033[33m!\033[0m %s\n' "$1"; WARN=$((WARN+1)); }
 bad()  { printf '  \033[31m✗\033[0m %s\n' "$1"; RED=$((RED+1)); }
 hdr()  { printf '\n\033[36m== %s ==\033[0m\n' "$1"; }
 
-RYZ_HOME="/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz"
-BUN="${BUN:-$HOME/.bun/bin/bun}"; [ -x "$BUN" ] || BUN=/home/fixxia/.bun/bin/bun
+REPRO_DIR="${DEVMIND_REPRO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+RYZ_HOME="$REPRO_DIR/ryz"
+BUN="${BUN:-$HOME/.bun/bin/bun}"
 
 hdr "WSL host"
 if systemctl is-system-running >/dev/null 2>&1; then ok "systemd: running"
@@ -48,10 +55,10 @@ else
 fi
 
 hdr "Termux tunnel"
-if timeout 12 ssh -o ConnectTimeout=8 -o BatchMode=yes -o StrictHostKeyChecking=accept-new termux-lab 'echo ok' >/dev/null 2>&1; then
-  ok "termux-lab reachable (192.168.1.233:8022)"
+if timeout 12 ssh -o ConnectTimeout=8 -o BatchMode=yes -o StrictHostKeyChecking=accept-new termux-remote 'echo ok' >/dev/null 2>&1; then
+  ok "termux-remote reachable (192.168.1.233:8022)"
 else
-  warn "termux-lab unreachable (phone off-network/asleep — external dependency)"
+  warn "termux-remote unreachable (phone off-network/asleep — external dependency)"
 fi
 
 hdr "ryz / aesh toolchain"

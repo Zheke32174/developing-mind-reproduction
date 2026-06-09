@@ -6,7 +6,6 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 source "$SCRIPT_DIR/devmind-env.sh"
 
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 LOG_FILE="$DEVMIND_LOG_DIR/harness_claude.log"
 
 echo "[Claude] Initiating Strategic Reflection..."
@@ -15,7 +14,7 @@ if is_cli_skipped "claude"; then
     exit 0
 fi
 
-cd "$REPRO_DIR"
+cd "$DEVMIND_REPRO_DIR"
 safe_run_cli "claude" "$LOG_FILE" \
     claude --strict-mcp-config --setting-sources= \
     -p "Perform a deep architectural reflection on the current ecosystem state. Identify structural weaknesses and propose next-gen evolution rounds."

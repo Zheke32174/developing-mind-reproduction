@@ -4,7 +4,11 @@ import os
 import sys
 from datetime import datetime
 
-MAIL_DIR = "/mnt/c/Users/Fixxia/swarmmail/inbox"
+win_home = os.environ.get("DEVMIND_WIN_HOME")
+if not win_home:
+    win_home = os.path.expanduser("~")
+
+MAIL_DIR = os.path.join(win_home, "swarmmail", "inbox")
 
 def send_alert(subject, message, priority="normal"):
     alert = {

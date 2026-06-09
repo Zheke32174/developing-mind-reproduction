@@ -6,10 +6,13 @@ import os
 import subprocess
 from pathlib import Path
 
-REPRO_DIR = Path(os.environ.get(
-    "DEVMIND_REPRO_DIR",
-    "/mnt/c/Users/Fixxia/developing-mind-reproduction",
-))
+# Use canonical environment variables
+REPRO_DIR = Path(os.environ.get("DEVMIND_REPRO_DIR"))
+if not REPRO_DIR:
+    # Attempt to derive from script location if env not set
+    SCRIPT_DIR = Path(__file__).resolve().parent
+    REPRO_DIR = SCRIPT_DIR.parent
+
 STATE_FILE = Path(os.environ.get(
     "DEVMIND_RALPH_STATE",
     REPRO_DIR / ".gemini" / "ralph" / "state.json",
@@ -23,7 +26,7 @@ PLAN_PROMPT = (
     "meaningful pre post and primary tasks and subtasks and run it as a looping "
     "goal until satisfactory conclusion"
 )
-MAX_ITERATIONS = "100"
+MAX_ITERATIONS = "50"
 
 
 def _skip_flag_active() -> bool:

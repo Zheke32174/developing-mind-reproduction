@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Developing Mind — Hivemind Governor (v4: Quota-Aware)
+# Developing Mind — Hivemind Governor (v5: Per-CLI Quota, Ralph+GGA+Codex Judge)
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Governance Logic
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
@@ -18,14 +18,16 @@ fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
-# Global quota cooldown check (12h after any rate-limit)
-if [ -f "$DEVMIND_QUOTA_STATE" ]; then
-    QUOTA_TIME=$(cat "$DEVMIND_QUOTA_STATE")
-    CURRENT_TIME=$(date +%s)
-    if [ $((CURRENT_TIME - QUOTA_TIME)) -lt 43200 ]; then
-        echo "💤 Quota cooldown active ($(( (43200 - (CURRENT_TIME - QUOTA_TIME)) / 60 ))m remaining). Skipping."
-        exit 0
-    fi
+# Per-CLI quota model: only skip if ALL primary CLIs are out of usage.
+# A single CLI hitting a rate-limit no longer blocks the whole governor cycle.
+# The legacy quota_state.txt global cooldown has been retired.
+ALL_SKIPPED=true
+for _cli in gemini claude codex opencode; do
+    is_cli_skipped "$_cli" || { ALL_SKIPPED=false; break; }
+done
+if $ALL_SKIPPED; then
+    echo "💤 All CLIs out of usage. Skipping cycle."
+    exit 0
 fi
 
 FREE_MEM=$(free -m | awk '/^Mem:/ {print $4}')
@@ -72,6 +74,22 @@ if ! is_cli_skipped "gemini"; then
         bash "$DEVMIND_REPRO_DIR/scripts/conductor_suite_orchestrator.sh"
 else
     echo "⏭️  Skipping conductor suite — gemini is OUT_OF_USAGE."
+fi
+
+# Ralph goal synthesis (Gemini-powered, quota-aware)
+if ! is_cli_skipped "gemini"; then
+    safe_run_cli "ralph-goals" "$DEVMIND_LOG_DIR/ralph-goals.log" \
+        bash "/home/fixxia/ryz-build/scripts/ralph-goals.sh"
+fi
+
+# GGA periodic repo audit (quota-aware)
+safe_run_cli "gga" "$DEVMIND_LOG_DIR/gga.log" \
+    bash "/home/fixxia/ryz-build/scripts/gga-cycle.sh"
+
+# Codex Judge (lamp automation review — uses lamp cron-run.sh)
+if ! is_cli_skipped "codex"; then
+    safe_run_cli "codex-judge" "$DEVMIND_LOG_DIR/codex-judge.log" \
+        bash "/home/fixxia/lamp/ai-scaffold/cron-run.sh" force-judge
 fi
 
 echo "✅ Hivemind cycle complete."

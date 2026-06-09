@@ -2,7 +2,12 @@
 import os
 import json
 
-MAIL_DIR = "/mnt/c/Users/Fixxia/swarmmail/inbox"
+win_home = os.environ.get("DEVMIND_WIN_HOME")
+if not win_home:
+    # Attempt to use home directory as fallback
+    win_home = os.path.expanduser("~")
+
+MAIL_DIR = os.path.join(win_home, "swarmmail", "inbox")
 
 def get_alerts():
     alerts = []

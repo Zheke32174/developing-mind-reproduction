@@ -8,10 +8,14 @@ DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 DEVMIND_REPRO_DIR="$(cd "$DEVMIND_SCRIPT_DIR/.." 2>/dev/null && pwd)"
 DEVMIND_STATE_DIR="$DEVMIND_REPRO_DIR/scripts"
 DEVMIND_QUOTA_STATE="$DEVMIND_STATE_DIR/quota_state.txt"
-DEVMIND_LOG_DIR="/home/fixxia/lamp/logs"
-DEVMIND_WIN_HOME="/mnt/c/Users/Fixxia"
+DEVMIND_LOG_DIR="$HOME/lamp/logs"
+DEVMIND_WIN_HOME="${DEVMIND_WIN_HOME:-/mnt/c/Users/Fixxia}"
 DEVMIND_GEMINI_DIR="$DEVMIND_WIN_HOME/.gemini"
 DEVMIND_GGA_PATH="$DEVMIND_WIN_HOME/scripts/gga_repo/bin/gga"
+DEVMIND_BACKUP_DIR="$DEVMIND_STATE_DIR/backups"
+
+# Ensure directories exist
+mkdir -p "$DEVMIND_LOG_DIR" "$DEVMIND_STATE_DIR" "$DEVMIND_BACKUP_DIR"
 
 # Skip-file TTL in seconds. Default 6h — after this, the next cycle re-probes
 # the CLI and re-enables it if quota has reset. Override with DEVMIND_SKIP_TTL.
@@ -21,7 +25,7 @@ DEVMIND_SKIP_TTL="${DEVMIND_SKIP_TTL:-21600}"
 DEVMIND_GEMINI_FLAGS=(--yolo --skip-trust)
 
 export DEVMIND_REPRO_DIR DEVMIND_STATE_DIR DEVMIND_QUOTA_STATE DEVMIND_LOG_DIR \
-       DEVMIND_GEMINI_DIR DEVMIND_GGA_PATH DEVMIND_SKIP_TTL
+       DEVMIND_GEMINI_DIR DEVMIND_GGA_PATH DEVMIND_SKIP_TTL DEVMIND_BACKUP_DIR
 
 # Quota patterns: CLI is out of paid usage (needs longer cooldown but NOT permanent).
 DEVMIND_OUT_OF_USAGE_PATTERNS="out of usage|usage limit reached|account.*suspended|no.*credits|billing.*required|subscription.*expired|access.*revoked"

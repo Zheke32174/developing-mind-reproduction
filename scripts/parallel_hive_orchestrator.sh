@@ -3,7 +3,9 @@
 # Role: Executes the multi-agent parallel harness (Gemini, Claude, Hermes, OpenCode, Codex).
 # Arxiv Anchor: 2511.10621 (Section 3.1) - Multi-Agent Parallelism
 
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
+DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$DEVMIND_SCRIPT_DIR/devmind-env.sh"
+REPRO_DIR="$DEVMIND_REPRO_DIR"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
 
 echo "🐝 Initiating Parallel Hive Execution (v2)..."

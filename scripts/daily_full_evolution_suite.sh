@@ -8,7 +8,9 @@ export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 source "$SCRIPT_DIR/devmind-env.sh"
 
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
+DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$DEVMIND_SCRIPT_DIR/devmind-env.sh"
+REPRO_DIR="$DEVMIND_REPRO_DIR"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
 TASKMASTER_BIN="npx --yes task-master-ai"
 

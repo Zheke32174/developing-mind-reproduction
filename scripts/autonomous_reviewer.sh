@@ -3,7 +3,9 @@
 # Role: Full 5-layer autonomous verification stack.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability)
 
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
+DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$DEVMIND_SCRIPT_DIR/devmind-env.sh"
+REPRO_DIR="$DEVMIND_REPRO_DIR"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
 
 echo "🛡️  Guardian Council: Convening for Systemic Review..."

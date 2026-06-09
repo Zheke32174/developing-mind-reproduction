@@ -3,7 +3,9 @@
 # Role: Executes ecosystem-wide evaluations and capability evolutions every 60 days.
 # Arxiv Anchor: 2511.10621 (Foundation Algorithms) - Continuous Evolution
 
-STATE_FILE="/mnt/c/Users/Fixxia/developing-mind-reproduction/scripts/evolution_state.json"
+DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$DEVMIND_SCRIPT_DIR/devmind-env.sh"
+STATE_FILE="$DEVMIND_STATE_DIR/evolution_state.json"
 HERMES_BIN=$(command -v hermes || echo "/home/linuxbrew/.linuxbrew/bin/hermes")
 
 echo "Checking 60-Day Evolution Cycle..."

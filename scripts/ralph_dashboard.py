@@ -7,10 +7,14 @@ import json
 import os
 import time
 
-STATE_FILE = os.environ.get(
-    "DEVMIND_RALPH_STATE",
-    "/mnt/c/Users/Fixxia/developing-mind-reproduction/.gemini/ralph/state.json",
-)
+# Use canonical environment variables
+STATE_FILE = os.environ.get("DEVMIND_RALPH_STATE")
+
+if not STATE_FILE:
+    # Attempt to derive from script location if env not set
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    REPRO_DIR = os.path.dirname(SCRIPT_DIR)
+    STATE_FILE = os.path.join(REPRO_DIR, ".gemini/ralph/state.json")
 
 def print_dashboard():
     print("=== Ralph Background Loop Status ===")

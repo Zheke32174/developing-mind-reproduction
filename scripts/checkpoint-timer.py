@@ -4,7 +4,14 @@ import os
 from datetime import datetime, timedelta
 import sys
 
-STATE_FILE = "/mnt/c/Users/Fixxia/developing-mind-reproduction/scripts/checkpoint_state.json"
+# Use canonical environment variables
+STATE_DIR = os.environ.get("DEVMIND_STATE_DIR")
+
+if not STATE_DIR:
+    # Attempt to derive from script location if env not set
+    STATE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+STATE_FILE = os.path.join(STATE_DIR, "checkpoint_state.json")
 
 def check_timer():
     if not os.path.exists(STATE_FILE):

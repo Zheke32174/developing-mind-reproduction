@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 # shellcheck source=devmind-env.sh
 source "$SCRIPT_DIR/devmind-env.sh"
 
-REPRO_DIR="${DEVMIND_REPRO_DIR:-/mnt/c/Users/Fixxia/developing-mind-reproduction}"
+REPRO_DIR="${DEVMIND_REPRO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 STATE_FILE="${DEVMIND_RALPH_STATE:-$REPRO_DIR/.gemini/ralph/state.json}"
 LOG_FILE="$DEVMIND_LOG_DIR/ralph_progressor.log"
 LOCK_FILE="/tmp/ralph_progressor.lock"

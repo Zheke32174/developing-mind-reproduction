@@ -8,8 +8,24 @@ import json
 import subprocess
 from datetime import datetime
 
-STAGING_DIR = "/home/fixxia/lamp/logs/secretary_staging"
-os.makedirs(STAGING_DIR, exist_ok=True)
+# Use canonical environment variables, falling back to dynamic paths if run out-of-context
+DEVMIND_LOG_DIR = os.environ.get("DEVMIND_LOG_DIR")
+
+if not DEVMIND_LOG_DIR:
+    # Attempt to derive from script location if env not set
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    REPRO_DIR = os.path.dirname(SCRIPT_DIR)
+    DEVMIND_LOG_DIR = os.path.join(REPRO_DIR, "logs")
+
+STAGING_DIR = os.path.join(DEVMIND_LOG_DIR, "secretary_staging")
+
+try:
+    os.makedirs(STAGING_DIR, exist_ok=True)
+except Exception as e:
+    print(f"⚠️ Warning: Could not create staging directory at {STAGING_DIR}: {e}")
+    # Fallback to local /tmp if strict isolation prevents creation
+    STAGING_DIR = "/tmp/secretary_staging"
+    os.makedirs(STAGING_DIR, exist_ok=True)
 
 def daily_sweep():
     print("🧹 Secretary Service Worker: Initiating daily monitor sweep...")
@@ -22,9 +38,13 @@ def daily_sweep():
     }
     
     file_name = f"sweep_{datetime.now().strftime('%Y%m%d')}.json"
-    with open(os.path.join(STAGING_DIR, file_name), "w") as f:
-        json.dump(report, f, indent=2)
-    print(f"✅ Daily sweep collected: {file_name}")
+    sweep_path = os.path.join(STAGING_DIR, file_name)
+    try:
+        with open(sweep_path, "w") as f:
+            json.dump(report, f, indent=2)
+        print(f"✅ Daily sweep collected: {file_name} at {sweep_path}")
+    except Exception as e:
+        print(f"❌ Failed to write daily sweep: {e}")
 
 if __name__ == "__main__":
     daily_sweep()

@@ -3,7 +3,9 @@
 # Role: Tracks the Codex Judge progress accurately through log analysis and flavor text.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Observability
 
-LOG_FILE="/home/fixxia/lamp/logs/cron.log"
+DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$DEVMIND_SCRIPT_DIR/devmind-env.sh"
+LOG_FILE="$DEVMIND_LOG_DIR/cron.log"
 LAST_MATCH=""
 
 echo -e "  \033[0;35m[Mind]\033[0m Initializing featherlight telemetry..."

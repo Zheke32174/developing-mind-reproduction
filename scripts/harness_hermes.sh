@@ -6,14 +6,13 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 source "$SCRIPT_DIR/devmind-env.sh"
 
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
 LOG_FILE="$DEVMIND_LOG_DIR/harness_hermes.log"
 
 echo "[Hermes] Initiating Boundary Validation..."
 # Hermes uses bash scripts directly (no external CLI quota exposure)
 # but check if underlying dependencies are available
 
-cd "$REPRO_DIR"
+cd "$DEVMIND_REPRO_DIR"
 safe_run_cli "bash" "$LOG_FILE" \
     bash scripts/hermes_60_day_evolution.sh --verify-only
 

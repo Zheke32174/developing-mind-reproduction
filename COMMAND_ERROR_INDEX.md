@@ -21,7 +21,7 @@ This index tracks frequent execution failures and codifies mandatory rules to el
 - **Root Cause:** `write_file` and `read_file` are restricted to specific mount points.
 - **Mandatory Rule:** 
     1. For files in `/substrate/host/`, always use `run_shell_command` with `cp` or `cat` redirection from a temp file.
-    2. Use `/substrate/mind/.gemini/tmp/fixxia-1/` as the primary staging area for `write_file`.
+    2. Use the project's temporary directory as the primary staging area for `write_file`.
 - **Status:** [ACTIVE] - Codified in Subconscious Daemon deployment.
 
 ---

@@ -14,8 +14,6 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPRO_DIR = Path(os.environ.get("DEVMIND_REPRO_DIR", SCRIPT_DIR.parent))
 LAMP_DIR = Path(os.environ.get("DEVMIND_LAMP_DIR", Path.home() / "lamp"))
-if not LAMP_DIR.exists() and Path("/home/fixxia/lamp").exists():
-    LAMP_DIR = Path("/home/fixxia/lamp")
 LAMP_LOGS = Path(os.environ.get("DEVMIND_LOG_DIR", LAMP_DIR / "logs"))
 STATE_FILE = Path(os.environ.get("DEVMIND_GOVERNANCE_STATE", REPRO_DIR / "scripts" / "governance_state.json"))
 

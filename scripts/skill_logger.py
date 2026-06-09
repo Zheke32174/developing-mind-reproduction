@@ -4,7 +4,12 @@ import os
 from datetime import datetime
 import sys
 
-LOG_FILE = "/mnt/c/Users/Fixxia/developing-mind-reproduction/SKILL_INVOCATION_LOG.json"
+# Use canonical environment variables
+repro_dir = os.environ.get("DEVMIND_REPRO_DIR")
+if not repro_dir:
+    repro_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+LOG_FILE = os.path.join(repro_dir, "SKILL_INVOCATION_LOG.json")
 
 def log_invocation(skill_name, context):
     timestamp = datetime.now().isoformat()

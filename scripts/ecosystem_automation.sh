@@ -12,7 +12,7 @@
 set -uo pipefail
 
 R="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)"
-BUN="${BUN:-$HOME/.bun/bin/bun}"; [ -x "$BUN" ] || BUN=/home/fixxia/.bun/bin/bun
+BUN="${BUN:-$HOME/.bun/bin/bun}"
 LOGDIR="${ECO_LOGDIR:-$HOME/lamp/logs}"; mkdir -p "$LOGDIR" 2>/dev/null || LOGDIR=/tmp
 STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null || echo unknown)"
 REPORT="$LOGDIR/ecosystem-$STAMP.md"
@@ -47,9 +47,12 @@ say "  repo uncommitted changes: $changes"
 recent=$(find "$R" -type f -mmin -1440 -not -path '*/.git/*' -not -path '*/dist/*' 2>/dev/null | wc -l)
 say "  files modified in last 24h: $recent"
 # tunnel reachability (termux) — surfaces when new device data could flow
-if timeout 8 ssh -o ConnectTimeout=5 -o BatchMode=yes termux-lab 'echo ok' >/dev/null 2>&1; then say "  termux: reachable (device data path open)"; else say "  termux: offline"; fi
+if timeout 8 ssh -o ConnectTimeout=5 -o BatchMode=yes termux-remote 'echo ok' >/dev/null 2>&1; then say "  termux: reachable (device data path open)"; else say "  termux: offline"; fi
 
 sec "Summary"
 [ "$RED" -eq 0 ] && say "STATUS: GREEN — stack healthy, verified, operator idle/proposing." || say "STATUS: ATTENTION — see sections above."
+echo "report: $REPORT"
+exit "$RED"
+�� stack healthy, verified, operator idle/proposing." || say "STATUS: ATTENTION — see sections above."
 echo "report: $REPORT"
 exit "$RED"

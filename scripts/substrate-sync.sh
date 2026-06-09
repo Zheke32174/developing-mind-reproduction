@@ -10,11 +10,14 @@
 
 export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-REPRO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-GGA_PATH="${REPRO_DIR}/../scripts/gga_repo/bin/gga"
-if [ ! -f "$GGA_PATH" ]; then
-    GGA_PATH="/mnt/c/Users/Fixxia/scripts/gga_repo/bin/gga"
+# Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Environment Resolution
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+if [ -f "$SCRIPT_DIR/devmind-env.sh" ]; then
+    source "$SCRIPT_DIR/devmind-env.sh"
 fi
+
+REPRO_DIR="${DEVMIND_REPRO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+GGA_PATH="${DEVMIND_GGA_PATH:-${REPRO_DIR}/../scripts/gga_repo/bin/gga}"
 
 cd "$REPRO_DIR" || { echo "❌ Cannot enter $REPRO_DIR"; exit 0; }
 

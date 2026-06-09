@@ -3,9 +3,11 @@
 # Role: Triggers a micro-evolution round every 2 days.
 # Arxiv Anchor: 2511.10621 (Foundation Algorithms) - Continuous Evolution
 
-REPRO_DIR="/mnt/c/Users/Fixxia/developing-mind-reproduction"
+DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+source "$DEVMIND_SCRIPT_DIR/devmind-env.sh"
+REPRO_DIR="$DEVMIND_REPRO_DIR"
 SCRIPTS_DIR="$REPRO_DIR/scripts"
-LOG_FILE="/home/fixxia/lamp/logs/sub_hermes.log"
+LOG_FILE="$DEVMIND_LOG_DIR/sub_hermes.log"
 
 echo "🧬 Starting Bi-Daily Sub-Hermes Evolution..."
 
