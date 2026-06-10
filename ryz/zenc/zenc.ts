@@ -20,7 +20,7 @@ const TARGETS: Record<string, { entry: string; outfile: string }> = {
 };
 
 function realBun(): string {
-  for (const b of [process.env.HOME + "/.bun/bin/bun", "/home/fixxia/.bun/bin/bun"]) {
+  for (const b of [process.env.HOME + "/.bun/bin/bun"]) {
     try { if (fs.statSync(b).isFile()) return b; } catch {}
   }
   return "bun";

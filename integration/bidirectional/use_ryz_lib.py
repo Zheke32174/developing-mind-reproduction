@@ -4,8 +4,12 @@
 # This is the "easy to install with the shared-libs half" direction.
 import ctypes, sys, os
 
-so = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser(
-    "/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz/dist/libmathlib.so")
+repro_dir = os.environ.get("DEVMIND_REPRO_DIR")
+if not repro_dir:
+    # derive from file location
+    repro_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+so = sys.argv[1] if len(sys.argv) > 1 else os.path.join(repro_dir, "ryz/dist/libmathlib.so")
 lib = ctypes.CDLL(so)
 for name in ("add", "mul", "fib"):
     fn = getattr(lib, name)

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # A/B test: original bash tool vs ryz port must produce identical output.
 set -uo pipefail
-BUN="${BUN:-/home/fixxia/.bun/bin/bun}"
+BUN="${BUN:-$HOME/.bun/bin/bun}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RYZ_CLI="$HERE/../bun/src/ryz.ts"
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # RYZ Linux coreutils A/B: each ryz-native tool must match the system tool AND the interpreter.
 set -uo pipefail
-BUN="${BUN:-$HOME/.bun/bin/bun}"; [ -x "$BUN" ] || BUN=/home/fixxia/.bun/bin/bun
+BUN="${BUN:-$HOME/.bun/bin/bun}"
 RL="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 R="$(cd "$RL/.." && pwd)"
 ZENC="$BUN $R/ryz/zenc/zenc.ts"; RYZ="$BUN $R/ryz/bun/src/ryz.ts"

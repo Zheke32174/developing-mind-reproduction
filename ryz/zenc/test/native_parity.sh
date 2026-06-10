@@ -2,7 +2,7 @@
 # Task #51 test: ryz native (zenc->C->gcc) output must match the interpreter,
 # the artifacts must be real ELF, run without a JS runtime, and ship a working .so.
 set -uo pipefail
-BUN="${BUN:-$HOME/.bun/bin/bun}"; [ -x "$BUN" ] || BUN=/home/fixxia/.bun/bin/bun
+BUN="${BUN:-$HOME/.bun/bin/bun}"
 R="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 ZENC="$BUN $R/zenc/zenc.ts"
 RYZ="$BUN $R/bun/src/ryz.ts"

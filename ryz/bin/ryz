@@ -6,7 +6,7 @@ RYZ_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)"
 ENTRY="$RYZ_HOME/bun/src/ryz.ts"
 
 pick_bun() {
-  for b in "$HOME/.bun/bin/bun" /home/fixxia/.bun/bin/bun; do
+  for b in "$HOME/.bun/bin/bun"; do
     [ -x "$b" ] && { echo "$b"; return; }
   done
   # PATH bun only if it is a real ELF bun, not the node shim.

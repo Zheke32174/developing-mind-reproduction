@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Simple perf harness for ryz/aesh (acquisition-grade: measure, don't assume).
 set -uo pipefail
-BUN="${BUN:-/home/fixxia/.bun/bin/bun}"
+BUN="${BUN:-$HOME/.bun/bin/bun}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RYZ="$HERE/../bun/src/ryz.ts"
 

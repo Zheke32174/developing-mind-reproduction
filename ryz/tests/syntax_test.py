@@ -6,7 +6,8 @@ import os
 
 def test_syntax():
     print("Testing RYZ syntax rules...")
-    if os.path.exists("/mnt/c/Users/Fixxia/ryz/GRAMMAR.md"):
+    grammar_path = os.environ.get("DEVMIND_REPRO_DIR", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + "/ryz/GRAMMAR.md"
+    if os.path.exists(grammar_path):
         print("✅ Grammar specification found.")
         return True
     else:

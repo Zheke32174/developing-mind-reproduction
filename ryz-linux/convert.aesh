@@ -2,11 +2,11 @@
 # Converts the WSL userland to standalone ryz natives, simplest -> most complex.
 # This batch: the two simplest coreutils. Each is built native via zenc and staged.
 echo "=== RYZ Linux conversion (driven by aesh) ==="
-export BUN=/home/fixxia/.bun/bin/bun
-export ZENC=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz/zenc/zenc.ts
-export SRC=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz-linux/src
-export BIN=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz-linux/bin
-export DIST=/mnt/c/Users/Fixxia/developing-mind-reproduction/ryz/dist
+export BUN=$HOME/.bun/bin/bun
+export ZENC=$DEVMIND_REPRO_DIR/ryz/zenc/zenc.ts
+export SRC=$DEVMIND_REPRO_DIR/ryz-linux/src
+export BIN=$DEVMIND_REPRO_DIR/ryz-linux/bin
+export DIST=$DEVMIND_REPRO_DIR/ryz/dist
 # Tier 0 — exit-code utilities
 $BUN $ZENC native $SRC/true.ryz && cp $DIST/true $BIN/true && echo "staged: true"
 $BUN $ZENC native $SRC/false.ryz && cp $DIST/false $BIN/false && echo "staged: false"
