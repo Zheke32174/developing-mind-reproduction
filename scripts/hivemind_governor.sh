@@ -82,20 +82,26 @@ gated_run() {
     return $rc
 }
 
-# run_direct <task_name> <log_file> <cmd...> — for non-AI tasks (bash, python3).
+# run_direct <task_name> <log_file> [max_timeout] <cmd...> — for non-AI tasks (bash, python3).
 # Does budget enforcement and session logging WITHOUT the skip/quota mechanism.
+# Optional max_timeout (integer, seconds) overrides the default 180s cap.
 # safe_run_cli must NOT be used for bash/python3: a timeout would create skip_bash
 # or skip_python3 and block ALL non-AI tasks for 6h.
 run_direct() {
     local task_name="$1"; shift
     local log_file="$1"; shift
+    # Optional numeric max_timeout as 3rd arg
+    local max_tout=180
+    if [[ "$1" =~ ^[0-9]+$ ]]; then
+        max_tout="$1"; shift
+    fi
     if ! budget_ok; then
         session_log "SKIP:$task_name (budget exhausted)"
         return 0
     fi
     local cap
     cap=$(budget_remaining)
-    local tout=$(( cap < 90 ? cap : 90 ))
+    local tout=$(( cap < max_tout ? cap : max_tout ))
     session_log "START:$task_name (budget_left=${cap}s, timeout=${tout}s)"
     local t0 t1 rc
     t0=$(date +%s)
