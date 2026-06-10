@@ -43,6 +43,7 @@ _skip_file_age() {
 }
 
 # is_cli_skipped <cli> — returns 0 (true) ONLY if a non-expired skip file exists.
+# TTL is read from the skip file itself (ttl=Ns field) if present, else DEVMIND_SKIP_TTL.
 # Expired skip files are auto-removed so the next cycle re-probes the CLI.
 is_cli_skipped() {
     local cli="$1"
@@ -51,8 +52,15 @@ is_cli_skipped() {
     if [[ "$age" -lt 0 ]]; then
         return 1
     fi
-    if [[ "$age" -ge "$DEVMIND_SKIP_TTL" ]]; then
-        echo "[devmind] ⏰ skip_${cli} expired (age ${age}s ≥ TTL ${DEVMIND_SKIP_TTL}s) — auto-clearing for re-probe."
+    # Read per-file TTL from the skip file content (ttl=<N>s)
+    local effective_ttl="$DEVMIND_SKIP_TTL"
+    local file_ttl
+    file_ttl=$(grep -oP 'ttl=\K[0-9]+' "$DEVMIND_STATE_DIR/skip_${cli}" 2>/dev/null || echo "")
+    if [[ -n "$file_ttl" ]]; then
+        effective_ttl="$file_ttl"
+    fi
+    if [[ "$age" -ge "$effective_ttl" ]]; then
+        echo "[devmind] ⏰ skip_${cli} expired (age ${age}s ≥ TTL ${effective_ttl}s) — auto-clearing for re-probe."
         rm -f "$DEVMIND_STATE_DIR/skip_${cli}"
         return 1
     fi

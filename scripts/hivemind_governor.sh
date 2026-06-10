@@ -20,7 +20,11 @@ SESSION_LOG="$DEVMIND_LOG_DIR/hivemind_session_$(date +%Y%m%dT%H%M%S).log"
 LAST_SESSION_LOG="$DEVMIND_STATE_DIR/hivemind_last_session.log"
 mkdir -p "$(dirname "$SESSION_LOG")" 2>/dev/null || true
 
-session_log() { echo "[hivemind] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" | tee -a "$SESSION_LOG" "$DEVMIND_LOG_DIR/hivemind.log"; }
+session_log() {
+    local msg="[hivemind] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*"
+    echo "$msg" >> "$SESSION_LOG"   # per-session log (for adaptive scheduling next run)
+    echo "$msg"                     # stdout → cron captures to hivemind.log (no double-write)
+}
 
 # Budget check: returns 0 if we still have budget, 1 if exhausted
 budget_ok() {
@@ -78,6 +82,38 @@ gated_run() {
     return $rc
 }
 
+# run_direct <task_name> <log_file> <cmd...> — for non-AI tasks (bash, python3).
+# Does budget enforcement and session logging WITHOUT the skip/quota mechanism.
+# safe_run_cli must NOT be used for bash/python3: a timeout would create skip_bash
+# or skip_python3 and block ALL non-AI tasks for 6h.
+run_direct() {
+    local task_name="$1"; shift
+    local log_file="$1"; shift
+    if ! budget_ok; then
+        session_log "SKIP:$task_name (budget exhausted)"
+        return 0
+    fi
+    local cap
+    cap=$(budget_remaining)
+    local tout=$(( cap < 90 ? cap : 90 ))
+    session_log "START:$task_name (budget_left=${cap}s, timeout=${tout}s)"
+    local t0 t1 rc
+    t0=$(date +%s)
+    timeout "${tout}s" "$@" >> "$log_file" 2>&1
+    rc=$?
+    t1=$(date +%s)
+    local elapsed=$(( t1 - t0 ))
+    if [[ $rc -eq 124 ]]; then
+        session_log "TIMEOUT:$task_name (${elapsed}s) — not skipped, will retry next cycle"
+        return 0
+    elif [[ $rc -eq 0 ]]; then
+        session_log "OK:$task_name (${elapsed}s)"
+    else
+        session_log "FAIL:$task_name rc=$rc (${elapsed}s)"
+    fi
+    return $rc
+}
+
 # ── Lock ──────────────────────────────────────────────────────────────────────
 if [ -f "$LOCK_FILE" ]; then
     PID=$(cat "$LOCK_FILE")
@@ -121,33 +157,50 @@ probe_cli "claude"   "claude --version"
 probe_cli "gemini"   "gemini-clean --version"
 
 # ── Task queue (ordered by priority; budget gates each one) ───────────────────
+# Adaptive: tasks that timed out last session are deprioritized (skipped if budget < 60s left)
 
-# 1. Substrate sync (bash only, no AI quota — fast)
-budget_ok && gated_run "bash" "$DEVMIND_LOG_DIR/substrate_sync.log" \
-    bash "$DEVMIND_REPRO_DIR/scripts/substrate-sync.sh"
+# 1. Substrate sync (bash only, no AI quota — use run_direct to avoid skip_bash)
+if ! last_task_timed_out "substrate-sync" || [[ $(budget_remaining) -gt 30 ]]; then
+    run_direct "substrate-sync" "$DEVMIND_LOG_DIR/substrate_sync.log" \
+        bash "$DEVMIND_REPRO_DIR/scripts/substrate-sync.sh"
+else
+    session_log "SKIP:substrate-sync (timed out last session + low budget)"
+fi
 
-# 2. Daily governance (python, no AI quota — fast)
-budget_ok && gated_run "python3" "$DEVMIND_LOG_DIR/daily_governance.log" \
+# 2. Daily governance (python, no AI quota — use run_direct to avoid skip_python3)
+run_direct "daily-governance" "$DEVMIND_LOG_DIR/daily_governance.log" \
     python3 "$DEVMIND_REPRO_DIR/scripts/daily_governance.py"
 
-# 3. GGA repo audit (quota-aware, 90s gate)
-budget_ok && gated_run "gga" "$DEVMIND_LOG_DIR/gga.log" \
-    bash "/home/fixxia/ryz-build/scripts/gga-cycle.sh"
+# 3. GGA repo audit (quota-aware, 90s gate — skip if timed out last 2 sessions)
+if ! last_task_timed_out "gga" || [[ $(budget_remaining) -gt 120 ]]; then
+    budget_ok && gated_run "gga" "$DEVMIND_LOG_DIR/gga.log" \
+        bash "/home/fixxia/ryz-build/scripts/gga-cycle.sh"
+else
+    session_log "SKIP:gga (timed out last session + insufficient budget)"
+fi
 
-# 4. Ralph goal synthesis (Gemini, 90s gate — skipped if quota exhausted)
+# 4. Ralph goal synthesis (Gemini, 90s gate — skipped if quota exhausted or recent timeout)
 if budget_ok && ! is_cli_skipped "gemini"; then
-    gated_run "ralph-goals" "$DEVMIND_LOG_DIR/ralph-goals.log" \
-        bash "/home/fixxia/ryz-build/scripts/ralph-goals.sh"
+    if last_task_timed_out "ralph-goals" && [[ $(budget_remaining) -lt 150 ]]; then
+        session_log "SKIP:ralph-goals (timed out last session, deferring to conserve budget)"
+    else
+        gated_run "ralph-goals" "$DEVMIND_LOG_DIR/ralph-goals.log" \
+            bash "/home/fixxia/ryz-build/scripts/ralph-goals.sh"
+    fi
 else
     session_log "SKIP:ralph-goals (gemini OUT_OF_USAGE or budget exhausted)"
 fi
 
 # 5. Conductor suite (Gemini, long task — skipped if quota exhausted)
 if budget_ok && ! is_cli_skipped "gemini"; then
-    export DEVMIND_TASK_LONG=1  # Allow up to 300s for this one
-    gated_run "gemini" "$DEVMIND_LOG_DIR/conductor.log" \
-        bash "$DEVMIND_REPRO_DIR/scripts/conductor_suite_orchestrator.sh"
-    unset DEVMIND_TASK_LONG
+    if last_task_timed_out "gemini" && [[ $(budget_remaining) -lt 200 ]]; then
+        session_log "SKIP:conductor (timed out last session, deferring to conserve budget)"
+    else
+        export DEVMIND_TASK_LONG=1  # Allow up to 300s for this one
+        gated_run "gemini" "$DEVMIND_LOG_DIR/conductor.log" \
+            bash "$DEVMIND_REPRO_DIR/scripts/conductor_suite_orchestrator.sh"
+        unset DEVMIND_TASK_LONG
+    fi
 else
     session_log "SKIP:conductor (gemini OUT_OF_USAGE or budget exhausted)"
 fi
