@@ -2,7 +2,7 @@
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Environment Resolution
 # Autonomy-safe: skip files auto-expire after a TTL so the system self-heals
 # without requiring an operator to delete them.
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 DEVMIND_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 DEVMIND_REPRO_DIR="$(cd "$DEVMIND_SCRIPT_DIR/.." 2>/dev/null && pwd)"

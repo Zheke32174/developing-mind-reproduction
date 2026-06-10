@@ -3,7 +3,7 @@
 # Role: Orchestrates a daily deep review and evolution cycle across all ecosystem CLIs.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Systemic Evolution
 
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 source "$SCRIPT_DIR/devmind-env.sh"

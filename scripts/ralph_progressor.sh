@@ -94,7 +94,9 @@ if [ -n "$PROMISE" ]; then
 Completion promise: output <promise>$PROMISE</promise> when done."
 fi
 
-OUT=$(timeout 270s gemini-clean "${DEVMIND_GEMINI_FLAGS[@]}" -p "$ITER_PROMPT" 2>&1)
+GEMINI_CLEAN="${GEMINI_CLEAN:-/home/fixxia/.local/bin/gemini-clean}"
+[[ -x "$GEMINI_CLEAN" ]] || GEMINI_CLEAN="gemini-clean"
+OUT=$(timeout 270s "$GEMINI_CLEAN" "${DEVMIND_GEMINI_FLAGS[@]}" -p "$ITER_PROMPT" 2>&1)
 RC=$?
 echo "$OUT" >> "$LOG_FILE"
 
