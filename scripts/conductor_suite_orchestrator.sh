@@ -2,7 +2,7 @@
 # Developing Mind — Conductor Suite Orchestrator (Autonomy-Safe)
 # Role: Non-interactively invokes the full Conductor suite to maintain ecosystem coherence.
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Verification Loop
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 # shellcheck source=devmind-env.sh

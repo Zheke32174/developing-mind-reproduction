@@ -11,11 +11,16 @@
 #   4. Honor skip flag — defer if gemini is OUT_OF_USAGE
 # All failure paths exit 0 so cron does not raise alarms; failures are logged.
 
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 # shellcheck source=devmind-env.sh
 source "$SCRIPT_DIR/devmind-env.sh"
+
+# Ingest most recent repo state before processing (amnesia prevention)
+if [[ -x "$SCRIPT_DIR/substrate-sync.sh" ]]; then
+    timeout 60s bash "$SCRIPT_DIR/substrate-sync.sh" >/dev/null 2>&1 || true
+fi
 
 REPRO_DIR="${DEVMIND_REPRO_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 STATE_FILE="${DEVMIND_RALPH_STATE:-$REPRO_DIR/.gemini/ralph/state.json}"
@@ -24,7 +29,11 @@ LOCK_FILE="/tmp/ralph_progressor.lock"
 
 mkdir -p "$(dirname "$LOG_FILE")" "$(dirname "$STATE_FILE")" 2>/dev/null || true
 
-log() { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG_FILE"; }
+log() {
+    local msg="[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*"
+    echo "$msg" >> "$LOG_FILE"
+    [[ -t 1 ]] && echo "$msg" || true
+}
 
 # Concurrency guard — one progressor at a time.
 if [ -f "$LOCK_FILE" ]; then
