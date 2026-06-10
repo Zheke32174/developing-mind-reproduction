@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 
 # Ephemeral runtime state (never commit — written by cron each cycle)
+.gemini/ralph/state.json
+.gemini/ralph/state.json.tmp
 scripts/skip_*
 scripts/quota_state.txt
 scripts/governance_state.json

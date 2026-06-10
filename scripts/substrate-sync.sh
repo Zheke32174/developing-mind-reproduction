@@ -8,7 +8,7 @@
 #   - Refuses to stage runtime state, backup files, or skip flags (.gitignore filters them).
 #   - All failure paths exit 0 so the governor keeps running.
 
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Environment Resolution
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
