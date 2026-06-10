@@ -19,11 +19,19 @@ fi
 # --yolo + --skip-trust = zero approval prompts, zero trust-workspace prompts.
 GEMINI_OPTS=("${DEVMIND_GEMINI_FLAGS[@]}")
 
+GEMINI_CLEAN="${GEMINI_CLEAN:-/home/fixxia/.local/bin/gemini-clean}"
+[[ -x "$GEMINI_CLEAN" ]] || GEMINI_CLEAN="gemini-clean"  # fallback to PATH lookup
+
 run_conductor_step() {
     local step="$1"
     local prompt="$2"
     local out rc
-    out=$(timeout 270s gemini-clean "${GEMINI_OPTS[@]}" -p "$prompt" 2>&1)
+    # Use is_cli_skipped guard here too so quota set by step 1 stops steps 2+3 immediately.
+    if is_cli_skipped "gemini"; then
+        echo "⏭️  Conductor $step deferred — gemini quota hit during this run."
+        return 1
+    fi
+    out=$(timeout 270s "$GEMINI_CLEAN" "${GEMINI_OPTS[@]}" -p "$prompt" 2>&1)
     rc=$?
     echo "$out"
     # Surface quota signals into skip-flag state so the next cycle defers automatically.
