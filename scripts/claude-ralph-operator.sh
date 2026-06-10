@@ -3,7 +3,7 @@
 # Role: Claude lead role for the Ralph Loop (Hardened & Portable).
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability)
 
-export PATH="/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 # 1. Dynamic Path Resolution
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
