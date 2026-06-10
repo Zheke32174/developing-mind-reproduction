@@ -1,95 +1,165 @@
 #!/usr/bin/env bash
-# Developing Mind — Hivemind Governor (v5: Per-CLI Quota, Ralph+GGA+Codex Judge)
+# Developing Mind — Hivemind Governor (v6: Hard Timeout Gates + Adaptive Scheduling)
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability) - Governance Logic
+#
+# ARCHITECTURE: Every non-interactive AI run has a hard timeout gate.
+# Total wall-clock budget = HIVEMIND_BUDGET_SECS (default 270s = 4.5 min).
+# Each task gets DEVMIND_CLI_TIMEOUT (default 90s) or 300s for long tasks.
+# On budget exhaustion, remaining tasks defer to next cron run.
+# After each cycle, writes an end-log summary that the next run reads to
+# prioritize or skip tasks based on last outcome.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 source "$SCRIPT_DIR/devmind-env.sh"
 
 LOCK_FILE="/tmp/hivemind.lock"
 MEMORY_THRESHOLD=800
+HIVEMIND_BUDGET_SECS="${HIVEMIND_BUDGET_SECS:-270}"  # 4.5 min total wall clock
+CYCLE_START=$(date +%s)
+SESSION_LOG="$DEVMIND_LOG_DIR/hivemind_session_$(date +%Y%m%dT%H%M%S).log"
+LAST_SESSION_LOG="$DEVMIND_STATE_DIR/hivemind_last_session.log"
+mkdir -p "$(dirname "$SESSION_LOG")" 2>/dev/null || true
 
+session_log() { echo "[hivemind] $(date -u +%Y-%m-%dT%H:%M:%SZ) $*" | tee -a "$SESSION_LOG" "$DEVMIND_LOG_DIR/hivemind.log"; }
+
+# Budget check: returns 0 if we still have budget, 1 if exhausted
+budget_ok() {
+    local elapsed=$(( $(date +%s) - CYCLE_START ))
+    if [[ $elapsed -ge $HIVEMIND_BUDGET_SECS ]]; then
+        session_log "⏱️  BUDGET EXHAUSTED (${elapsed}s ≥ ${HIVEMIND_BUDGET_SECS}s) — deferring remaining tasks."
+        return 1
+    fi
+    return 0
+}
+
+# Remaining budget in seconds (minimum 10s)
+budget_remaining() {
+    local elapsed=$(( $(date +%s) - CYCLE_START ))
+    local rem=$(( HIVEMIND_BUDGET_SECS - elapsed ))
+    echo $(( rem < 10 ? 10 : rem ))
+}
+
+# Adaptive: read last session outcome to decide task priority
+last_task_failed() {
+    local task="$1"
+    [[ -f "$LAST_SESSION_LOG" ]] && grep -q "FAIL:$task" "$LAST_SESSION_LOG" 2>/dev/null
+}
+last_task_timed_out() {
+    local task="$1"
+    [[ -f "$LAST_SESSION_LOG" ]] && grep -q "TIMEOUT:$task" "$LAST_SESSION_LOG" 2>/dev/null
+}
+
+# Gated safe_run: wraps safe_run_cli with budget enforcement and session logging
+gated_run() {
+    local task_name="$1"; shift
+    local log_file="$1"; shift
+    if ! budget_ok; then
+        session_log "SKIP:$task_name (budget exhausted)"
+        return 0
+    fi
+    # Cap per-task timeout to remaining budget
+    local cap
+    cap=$(budget_remaining)
+    local prev_timeout="${DEVMIND_CLI_TIMEOUT:-90}"
+    export DEVMIND_CLI_TIMEOUT=$(( cap < prev_timeout ? cap : prev_timeout ))
+    session_log "START:$task_name (budget_left=${cap}s, timeout=${DEVMIND_CLI_TIMEOUT}s)"
+    local t0 t1 rc
+    t0=$(date +%s)
+    safe_run_cli "$task_name" "$log_file" "$@"
+    rc=$?
+    t1=$(date +%s)
+    export DEVMIND_CLI_TIMEOUT="$prev_timeout"
+    local elapsed=$(( t1 - t0 ))
+    if [[ $rc -eq 0 ]]; then
+        session_log "OK:$task_name (${elapsed}s)"
+    else
+        session_log "FAIL:$task_name rc=$rc (${elapsed}s)"
+    fi
+    return $rc
+}
+
+# ── Lock ──────────────────────────────────────────────────────────────────────
 if [ -f "$LOCK_FILE" ]; then
     PID=$(cat "$LOCK_FILE")
     if ps -p "$PID" > /dev/null 2>&1; then
-        echo "🚨 Governor already running (PID $PID). Exiting."
+        session_log "🚨 Governor already running (PID $PID). Exiting."
         exit 0
     fi
 fi
 echo $$ > "$LOCK_FILE"
-trap 'rm -f "$LOCK_FILE"' EXIT
+trap 'rm -f "$LOCK_FILE"; cp "$SESSION_LOG" "$LAST_SESSION_LOG" 2>/dev/null || true' EXIT
 
-# Per-CLI quota model: only skip if ALL primary CLIs are out of usage.
-# A single CLI hitting a rate-limit no longer blocks the whole governor cycle.
-# The legacy quota_state.txt global cooldown has been retired.
+# ── Pre-flight ─────────────────────────────────────────────────────────────────
 ALL_SKIPPED=true
 for _cli in gemini claude codex opencode; do
     is_cli_skipped "$_cli" || { ALL_SKIPPED=false; break; }
 done
 if $ALL_SKIPPED; then
-    echo "💤 All CLIs out of usage. Skipping cycle."
+    session_log "💤 All CLIs out of usage. Skipping cycle."
     exit 0
 fi
 
 FREE_MEM=$(free -m | awk '/^Mem:/ {print $4}')
 if [ "$FREE_MEM" -lt "$MEMORY_THRESHOLD" ]; then
-    echo "⚠️ Low memory ($FREE_MEM MB). Dropping caches..."
+    session_log "⚠️ Low memory ($FREE_MEM MB). Dropping caches..."
     sync; echo 3 | sudo tee /proc/sys/vm/drop_caches >/dev/null 2>&1 || true
 fi
 
-echo "🚀 Initiating Hivemind Orchestration Loop..."
+session_log "🚀 Hivemind cycle start (budget=${HIVEMIND_BUDGET_SECS}s)"
 
-# Probe each CLI for availability before running the full suite.
-# This catches "out of usage" early without burning a real task invocation.
+# ── Probes (30s each, version checks only — no quota burn) ────────────────────
 probe_cli() {
-    local cli="$1"
-    local probe_cmd="$2"
-    if is_cli_skipped "$cli"; then
-        echo "⏭️  $cli is OUT_OF_USAGE (skip file exists). Skipping probe."
-        return 0
-    fi
+    local cli="$1" probe_cmd="$2"
+    is_cli_skipped "$cli" && return 0
     local out
     out=$(timeout 30s $probe_cmd 2>&1) || true
     check_output_for_quota "$cli" "$out" || true
 }
-
 probe_cli "codex"    "codex --version"
 probe_cli "opencode" "opencode --version"
 probe_cli "claude"   "claude --version"
-probe_cli "gemini"   "gemini --version"
+probe_cli "gemini"   "gemini-clean --version"
 
-# Run substrate sync and governance (no quota exposure)
-safe_run_cli "bash" "$DEVMIND_LOG_DIR/substrate_sync.log" \
+# ── Task queue (ordered by priority; budget gates each one) ───────────────────
+
+# 1. Substrate sync (bash only, no AI quota — fast)
+budget_ok && gated_run "bash" "$DEVMIND_LOG_DIR/substrate_sync.log" \
     bash "$DEVMIND_REPRO_DIR/scripts/substrate-sync.sh"
 
-safe_run_cli "python3" "$DEVMIND_LOG_DIR/daily_governance.log" \
+# 2. Daily governance (python, no AI quota — fast)
+budget_ok && gated_run "python3" "$DEVMIND_LOG_DIR/daily_governance.log" \
     python3 "$DEVMIND_REPRO_DIR/scripts/daily_governance.py"
 
-# Probe opencode status
-safe_run_cli "opencode" "$DEVMIND_LOG_DIR/opencode_status.log" \
-    opencode --version
-
-# Run conductor suite (calls Gemini internally — skipped if gemini is OUT_OF_USAGE)
-if ! is_cli_skipped "gemini"; then
-    safe_run_cli "gemini" "$DEVMIND_LOG_DIR/conductor.log" \
-        bash "$DEVMIND_REPRO_DIR/scripts/conductor_suite_orchestrator.sh"
-else
-    echo "⏭️  Skipping conductor suite — gemini is OUT_OF_USAGE."
-fi
-
-# Ralph goal synthesis (Gemini-powered, quota-aware)
-if ! is_cli_skipped "gemini"; then
-    safe_run_cli "ralph-goals" "$DEVMIND_LOG_DIR/ralph-goals.log" \
-        bash "/home/fixxia/ryz-build/scripts/ralph-goals.sh"
-fi
-
-# GGA periodic repo audit (quota-aware)
-safe_run_cli "gga" "$DEVMIND_LOG_DIR/gga.log" \
+# 3. GGA repo audit (quota-aware, 90s gate)
+budget_ok && gated_run "gga" "$DEVMIND_LOG_DIR/gga.log" \
     bash "/home/fixxia/ryz-build/scripts/gga-cycle.sh"
 
-# Codex Judge (lamp automation review — uses lamp cron-run.sh)
-if ! is_cli_skipped "codex"; then
-    safe_run_cli "codex-judge" "$DEVMIND_LOG_DIR/codex-judge.log" \
-        bash "/home/fixxia/lamp/ai-scaffold/cron-run.sh" force-judge
+# 4. Ralph goal synthesis (Gemini, 90s gate — skipped if quota exhausted)
+if budget_ok && ! is_cli_skipped "gemini"; then
+    gated_run "ralph-goals" "$DEVMIND_LOG_DIR/ralph-goals.log" \
+        bash "/home/fixxia/ryz-build/scripts/ralph-goals.sh"
+else
+    session_log "SKIP:ralph-goals (gemini OUT_OF_USAGE or budget exhausted)"
 fi
 
-echo "✅ Hivemind cycle complete."
+# 5. Conductor suite (Gemini, long task — skipped if quota exhausted)
+if budget_ok && ! is_cli_skipped "gemini"; then
+    export DEVMIND_TASK_LONG=1  # Allow up to 300s for this one
+    gated_run "gemini" "$DEVMIND_LOG_DIR/conductor.log" \
+        bash "$DEVMIND_REPRO_DIR/scripts/conductor_suite_orchestrator.sh"
+    unset DEVMIND_TASK_LONG
+else
+    session_log "SKIP:conductor (gemini OUT_OF_USAGE or budget exhausted)"
+fi
+
+# 6. Codex Judge (lamp review — skipped if quota exhausted)
+if budget_ok && ! is_cli_skipped "codex"; then
+    gated_run "codex-judge" "$DEVMIND_LOG_DIR/codex-judge.log" \
+        bash "/home/fixxia/lamp/ai-scaffold/cron-run.sh" force-judge
+else
+    session_log "SKIP:codex-judge (codex OUT_OF_USAGE or budget exhausted)"
+fi
+
+# ── End-of-cycle summary ──────────────────────────────────────────────────────
+elapsed_total=$(( $(date +%s) - CYCLE_START ))
+session_log "✅ Hivemind cycle complete (total=${elapsed_total}s / budget=${HIVEMIND_BUDGET_SECS}s)"

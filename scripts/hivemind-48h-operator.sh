@@ -240,7 +240,7 @@ Rules:
 
     if ! is_cli_skipped "gemini"; then
         operator_log "TASK_EXEC using gemini for id=$task_id"
-        result=$(timeout 600s gemini --yolo --skip-trust -p "$prompt" 2>&1 || echo "GEMINI_TIMEOUT")
+        result=$(timeout 270s gemini-clean --yolo --skip-trust -p "$prompt" 2>&1 || echo "GEMINI_TIMEOUT")
         check_output_for_quota "gemini" "$result" || true
     elif ! is_cli_skipped "claude"; then
         operator_log "TASK_EXEC falling back to claude for id=$task_id"
@@ -357,7 +357,7 @@ while true; do
     # ── Step 2: Full governor cycle ──────────────────────────────────────────
     operator_log "GOVERNOR_START cycle=$CYCLE"
     if [[ -f "$GOVERNOR_SCRIPT" ]]; then
-        timeout 600s bash "$GOVERNOR_SCRIPT" >> "$LOG_DIR/governor-48h.log" 2>&1 || \
+        timeout 300s bash "$GOVERNOR_SCRIPT" >> "$LOG_DIR/governor-48h.log" 2>&1 || \
             operator_log "GOVERNOR returned non-zero (continuing)"
     else
         operator_log "GOVERNOR_MISSING script not found: $GOVERNOR_SCRIPT"

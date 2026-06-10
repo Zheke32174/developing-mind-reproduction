@@ -39,14 +39,14 @@ fi
 # 4. Gemini secondary review
 echo "⚙️  Invoking Gemini CLI..."
 safe_run_cli "gemini" "$DEVMIND_LOG_DIR/harness_gemini.log" \
-    gemini "${DEVMIND_GEMINI_FLAGS[@]}" \
+    gemini-clean "${DEVMIND_GEMINI_FLAGS[@]}" \
     -p "Verify Phase 1 Factory Deployment status and sign the Daily Evolution Ledger." \
     || echo "Gemini review complete."
 
 # 5. OpenCode GGA compliance check
 echo "⚙️  Invoking OpenCode..."
 safe_run_cli "opencode" "$DEVMIND_LOG_DIR/opencode.log" \
-    opencode --pure status \
+    opencode stats \
     || echo "OpenCode status check complete."
 
 # 6. Hermes evolution benchmark

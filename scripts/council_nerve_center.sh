@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 # shellcheck source=scripts/devmind-env.sh
 source "$SCRIPT_DIR/devmind-env.sh"
 
-SCRIPTS_DIR="$REPRO_DIR/scripts"
+SCRIPTS_DIR="$DEVMIND_REPRO_DIR/scripts"
 ERROR_LOG="${DEVMIND_COUNCIL_ERROR_LOG:-$DEVMIND_LOG_DIR/council_error.log}"
 mkdir -p "$(dirname "$ERROR_LOG")" 2>/dev/null || true
 

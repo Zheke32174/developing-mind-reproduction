@@ -34,7 +34,7 @@ def daily_sweep():
         "disk": subprocess.getoutput("df -h /"),
         "processes": subprocess.getoutput("ps aux --sort=-%mem | head -n 10"),
         "security_events": subprocess.getoutput("grep 'sudo:' /var/log/auth.log | tail -n 5 2>/dev/null || echo 'No events'"),
-        "mcp_health": subprocess.getoutput("gemini mcp list 2>/dev/null || echo 'MCP status check failed'")
+        "mcp_health": subprocess.getoutput("timeout 15s gemini-clean mcp list 2>/dev/null || echo 'MCP status check failed'")
     }
     
     file_name = f"sweep_{datetime.now().strftime('%Y%m%d')}.json"

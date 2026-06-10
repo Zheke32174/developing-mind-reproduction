@@ -7,7 +7,8 @@ import subprocess
 from pathlib import Path
 
 # Use canonical environment variables
-REPRO_DIR = Path(os.environ.get("DEVMIND_REPRO_DIR"))
+_repro_env = os.environ.get("DEVMIND_REPRO_DIR")
+REPRO_DIR = Path(_repro_env) if _repro_env else None
 if not REPRO_DIR:
     # Attempt to derive from script location if env not set
     SCRIPT_DIR = Path(__file__).resolve().parent

@@ -23,7 +23,7 @@ run_conductor_step() {
     local step="$1"
     local prompt="$2"
     local out rc
-    out=$(timeout 15m gemini "${GEMINI_OPTS[@]}" -p "$prompt" 2>&1)
+    out=$(timeout 270s gemini-clean "${GEMINI_OPTS[@]}" -p "$prompt" 2>&1)
     rc=$?
     echo "$out"
     # Surface quota signals into skip-flag state so the next cycle defers automatically.

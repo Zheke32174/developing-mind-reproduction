@@ -25,7 +25,7 @@ fi
 echo "🔍 Performing Security Audit..."
 # Check for common permission drifts and exposed .env files
 find "$DEVMIND_REPRO_DIR" -name ".env" -ls
-# Avoid hardcoding /substrate/mind
+# Avoid hardcoding /home/fixxia
 if [ -d "$DEVMIND_GEMINI_DIR/extensions" ]; then
     find "$DEVMIND_GEMINI_DIR/extensions" -name "package.json" -exec grep -i "vulnerability" {} + || true
 fi

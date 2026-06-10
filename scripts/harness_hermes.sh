@@ -13,12 +13,16 @@ echo "[Hermes] Initiating Boundary Validation..."
 # but check if underlying dependencies are available
 
 cd "$DEVMIND_REPRO_DIR"
-safe_run_cli "bash" "$LOG_FILE" \
-    bash scripts/hermes_60_day_evolution.sh --verify-only
+timeout 180s bash scripts/hermes_60_day_evolution.sh --verify-only >> "$LOG_FILE" 2>&1
+local_rc=$?
+if [[ $local_rc -eq 124 ]]; then
+    echo "[Hermes] WARN: hermes_60_day_evolution.sh timed out after 180s."
+    local_rc=1
+fi
 
-if [ $? -eq 0 ]; then
+if [ $local_rc -eq 0 ]; then
     echo "[Hermes] SUCCESS: Boundaries verified."
 else
-    echo "[Hermes] FAILED: See $LOG_FILE"
+    echo "[Hermes] FAILED (rc=$local_rc): See $LOG_FILE"
     exit 1
 fi

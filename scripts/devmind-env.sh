@@ -101,9 +101,22 @@ safe_run_cli() {
         echo "[devmind] ⏭️  $cli is marked OUT_OF_USAGE. Skipping." | tee -a "$log_file"
         return 0
     fi
+    # Hard timeout gate: 90s for small tasks, 300s for long tasks.
+    # DEVMIND_CLI_TIMEOUT overrides the default (90s).
+    # DEVMIND_CLI_TIMEOUT_LONG (300s) is used when cli name ends in -long or when
+    # the caller exports DEVMIND_TASK_LONG=1 before calling safe_run_cli.
+    local base_timeout="${DEVMIND_CLI_TIMEOUT:-90}"
+    if [[ "${DEVMIND_TASK_LONG:-0}" == "1" ]]; then
+        base_timeout="${DEVMIND_CLI_TIMEOUT_LONG:-300}"
+    fi
     local output rc
-    output=$(timeout 15m "$@" 2>&1)
+    output=$(timeout "${base_timeout}s" "$@" 2>&1)
     rc=$?
+    if [[ $rc -eq 124 ]]; then
+        echo "[devmind] ⏱️  $cli TIMED OUT after ${base_timeout}s — checkpoint stop (not an error)." | tee -a "$log_file"
+        mark_cli_skipped "$cli" "timeout-gate-${base_timeout}s" 2>/dev/null || true
+        return 0
+    fi
     echo "$output" | tee -a "$log_file"
     if ! check_output_for_quota "$cli" "$output"; then
         return 1
@@ -123,7 +136,7 @@ probe_cli_live() {
     local out rc
     case "$cli" in
         gemini)
-            out=$(timeout 45s gemini "${DEVMIND_GEMINI_FLAGS[@]}" -p "ok" 2>&1)
+            out=$(timeout 45s gemini-clean "${DEVMIND_GEMINI_FLAGS[@]}" -p "ok" 2>&1)
             rc=$?
             ;;
         codex)

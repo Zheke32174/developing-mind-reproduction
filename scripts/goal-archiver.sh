@@ -143,7 +143,7 @@ import json, sys, subprocess, os, shutil
 
 batches_raw = '''${BATCHES_JSON}'''
 batches = json.loads(batches_raw)
-gemini_bin = shutil.which('gemini') or '/home/linuxbrew/.linuxbrew/bin/gemini'
+gemini_bin = '/home/fixxia/.local/bin/gemini-clean'
 results = []
 
 for week, tasks in sorted(batches.items()):
