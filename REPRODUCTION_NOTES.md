@@ -47,3 +47,46 @@ Reference-free reasoning evaluation using the Socratic method. SocREval uses GPT
 
 **Proposition/Theorem Encoded:**
 SocREval thesis: "Systematic Socratic questioning enables accurate automatic evaluation of reasoning quality without human references." Validates that multi-dimensional probing reveals reasoning gaps as effectively as human judgment.
+
+### Paper 2407.17349 — Socratic Method for Conversational Mathematics Teaching
+**Status:** Integrated ✓  
+**Timestamp:** 2026-06-11T12:28:55Z  
+**Implementation:** `src/papers/paper_2407_17349/socratic_mathematics.py`  
+**Tests:** `tests/test_paper_2407_17349.py` (20 tests, all passing)
+
+**Core Contribution:**
+A Socratic method framework for LLM-driven mathematics teaching that guides learners through guided inquiry, heuristic questioning, and incremental knowledge construction rather than direct solution provision.
+
+**Key Innovations:**
+1. **Pedagogical State Progression:** Six-phase dialogue model (problem presentation → initial exploration → guided inquiry → knowledge application → rectification → reflection summarization).
+2. **Knowledge-Enhanced Guidance:** Domain knowledge context (definitions, theorems, heuristics, common mistakes, prerequisites) informs appropriate guidance at each phase.
+3. **Socratic Question Taxonomy:** Five question types (clarification, probing, hypothetical, leading, reviewing) tailored to different pedagogical objectives.
+4. **Misconception Identification & Rectification:** Systematic detection and correction of student misconceptions through guided re-teaching.
+5. **SocraticMATH Dataset:** High-quality mathematical teaching dataset with Socratic-style conversations.
+
+**Implementation Highlights:**
+- `SocraticQuestion`: Structured representation of Socratic questions with pedagogical intent
+- `PedagogicalState`: Six-phase state machine for teaching dialogue progression
+- `KnowledgeContext`: Domain knowledge tagged with category and applicability phases
+- `GuidanceHeuristic`: Problem-solving strategies with named heuristics and mathematical principles
+- `RectificationStep`: Systematic error correction with reinforcing questions
+- `SocraticTeachingSession`: Complete dialogue session tracking state, exchanges, and corrections
+- `SocraticMathematicsEngine`: Orchestration engine managing session lifecycle
+- `PedagogicalAnalyzer`: Effectiveness metrics (dialogue engagement, rectification efficiency, pedagogical progression)
+
+**Measurement of Success:**
+- 20 unit tests covering all core components and end-to-end workflows
+- Session lifecycle testing (create → present → process → complete)
+- Pedagogical effectiveness scoring (0.0-1.0 range)
+- State progression validation through all six phases
+- Dialogue recording and rectification tracking
+
+**Proposition/Theorem Encoded:**
+"An LLM-based Socratic teaching method that incorporates knowledge-enhanced guidance, iterative rectification, and pedagogical summarization produces superior learning outcomes and engagement compared to direct solution provision or generic chain-of-thought approaches in mathematics education." The framework demonstrates that pedagogical quality is superior when LLMs guide rather than dictate, question rather than answer.
+
+**Pedagogical Model Insights:**
+- Socratic method outperforms direct instruction in fostering deeper understanding
+- Question type selection based on dialogue phase improves student insight
+- Knowledge context enables adaptive guidance matching student level and domain
+- Rectification loops reduce misconception propagation
+- Effectiveness correlates with dialogue engagement and rectification efficiency

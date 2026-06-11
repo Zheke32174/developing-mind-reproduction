@@ -1,16 +1,14 @@
 # Paper Integration Backlog
-_generated 2026-06-11T09:30:02Z by paper-feeder.sh — substrate growth for the developing mind_
+_generated 2026-06-11T16:18:00Z by paper-feeder.sh — substrate growth for the developing mind_
 
-**Integrated:** 10  |  **arxiv candidates:** 16  |  **arxiv pending:** 6  |  **slug-dir papers:** 89
+**Integrated:** 12  |  **arxiv candidates:** 16  |  **arxiv pending:** 4  |  **slug-dir papers:** 89
 
 ## Priority A — arxiv papers staged in .paper2code_work but NOT integrated
 _each = one RALPH integration task: reproduce → improve → integrate into src/papers/paper_<id>_
-- [ ] A1. Integrate paper `2310.00074` → `src/papers/paper_2310_00074/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
-- [ ] A2. Integrate paper `2403.03029` → `src/papers/paper_2403_03029/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
-- [ ] A3. Integrate paper `2407.13067` → `src/papers/paper_2407_13067/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
-- [ ] A4. Integrate paper `2407.17349` → `src/papers/paper_2407_17349/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
-- [ ] A5. Integrate paper `2511.10621` → `src/papers/paper_2511_10621/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
-- [ ] A6. Integrate paper `2602.03414` → `src/papers/paper_2602_03414/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
+- [ ] A1. Integrate paper `2407.13067` → `src/papers/paper_2407_13067/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
+- [ ] A2. Integrate paper `2407.17349` → `src/papers/paper_2407_17349/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
+- [ ] A3. Integrate paper `2511.10621` → `src/papers/paper_2511_10621/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
+- [ ] A4. Integrate paper `2602.03414` → `src/papers/paper_2602_03414/` (scaffold, implement core, tests, REPRODUCTION_NOTES, GGA review)
 
 ## Priority B — slug-named paper dirs in home (need arxiv-id mapping + triage)
 _89 dirs; first 40 listed — feeder task: identify arxiv id, stage into .paper2code_work, then promote to Priority A_
