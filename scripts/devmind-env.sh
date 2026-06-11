@@ -176,3 +176,80 @@ probe_cli_live() {
     clear_cli_skip "$cli" >/dev/null 2>&1 || true
     return 0
 }
+
+# ────────────────────────────────────────────────────────────────────────────
+# TIER ROUTER — cost-ordered failover across the agent fleet.
+# Without this, callers hard-coded to one CLI just defer when it is OUT_OF_USAGE.
+# Operator cost tiering: gemini (primary/free) > opencode (free) > codex (sometimes)
+#   > copilot (limited) > claude (very limited last resort).
+# hermes is a LOCAL bash validator (not a prompt executor) — it runs on its own
+# cron and is intentionally NOT in the prompt tier.
+# Override the order/set with DEVMIND_AGENT_TIER_OVERRIDE="gemini opencode ...".
+# ────────────────────────────────────────────────────────────────────────────
+DEVMIND_AGENT_TIER=(${DEVMIND_AGENT_TIER_OVERRIDE:-gemini opencode codex copilot claude})
+
+# Set by run_agent so callers can inspect the winning agent's output (e.g. for
+# completion-promise detection) without re-capturing stdout.
+DEVMIND_LAST_OUTPUT=""
+DEVMIND_LAST_AGENT=""
+
+# _agent_bin <cli> — map a tier name to the executable that must exist on PATH.
+_agent_bin() { [[ "$1" == gemini ]] && echo "gemini-clean" || echo "$1"; }
+
+# select_agent — echo the first tier agent that is installed AND not skip-flagged.
+# Returns 0 + prints the cli name, or 1 if the whole tier is exhausted. No quota burn.
+select_agent() {
+    local cli
+    for cli in "${DEVMIND_AGENT_TIER[@]}"; do
+        command -v "$(_agent_bin "$cli")" >/dev/null 2>&1 || continue
+        is_cli_skipped "$cli" >/dev/null 2>&1 && continue
+        echo "$cli"; return 0
+    done
+    return 1
+}
+
+# run_agent <cli> <prompt> [logfile] — dispatch a prompt to one CLI using its
+# correct non-interactive invocation, with quota detection. Sets DEVMIND_LAST_*.
+# Returns: 0 success; 1 quota/timeout/skip (caller should try next tier); 2 unknown cli.
+run_agent() {
+    local cli="$1" prompt="$2" log="${3:-$DEVMIND_LOG_DIR/run_agent.log}"
+    local to="${DEVMIND_CLI_TIMEOUT:-270}" out rc
+    if is_cli_skipped "$cli" >/dev/null 2>&1; then return 1; fi
+    case "$cli" in
+        gemini)   out=$(timeout "${to}s" gemini-clean "${DEVMIND_GEMINI_FLAGS[@]}" -p "$prompt" 2>&1); rc=$? ;;
+        opencode) out=$(timeout "${to}s" opencode run "$prompt" 2>&1); rc=$? ;;
+        codex)    out=$(timeout "${to}s" codex exec --skip-git-repo-check "$prompt" 2>&1); rc=$? ;;
+        copilot)  out=$(timeout "${to}s" copilot -p "$prompt" --allow-all-tools 2>&1); rc=$? ;;
+        claude)   out=$(timeout "${to}s" claude --strict-mcp-config --setting-sources= -p "$prompt" 2>&1); rc=$? ;;
+        *)        echo "[devmind] run_agent: unknown cli '$cli'" >> "$log"; return 2 ;;
+    esac
+    DEVMIND_LAST_OUTPUT="$out"; DEVMIND_LAST_AGENT="$cli"
+    echo "$out" >> "$log"
+    if [[ $rc -eq 124 ]]; then
+        echo "[devmind] ⏱️  $cli timed out after ${to}s — checkpoint skip." >> "$log"
+        mark_cli_skipped "$cli" "timeout-${to}s" >/dev/null 2>&1 || true
+        return 1
+    fi
+    check_output_for_quota "$cli" "$out" || return 1   # quota → try next tier
+    return $rc
+}
+
+# run_with_failover <prompt> [logfile] — walk the tier until one agent succeeds
+# (non-quota). On success: DEVMIND_LAST_AGENT/OUTPUT are set and 0 is returned.
+# Returns 1 only if the entire tier is exhausted this cycle.
+run_with_failover() {
+    local prompt="$1" log="${2:-$DEVMIND_LOG_DIR/run_agent.log}" cli
+    for cli in "${DEVMIND_AGENT_TIER[@]}"; do
+        command -v "$(_agent_bin "$cli")" >/dev/null 2>&1 || continue
+        if is_cli_skipped "$cli" >/dev/null 2>&1; then
+            echo "[devmind] ⏭️  $cli skipped — next tier." >> "$log"; continue
+        fi
+        echo "[devmind] ▶ dispatching to $cli" >> "$log"
+        if run_agent "$cli" "$prompt" "$log"; then
+            echo "[devmind] ✅ $cli completed." >> "$log"; return 0
+        fi
+        echo "[devmind] ↪ $cli failed/quota — failover." >> "$log"
+    done
+    echo "[devmind] ⛔ entire agent tier exhausted this cycle." >> "$log"
+    return 1
+}

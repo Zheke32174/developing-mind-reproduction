@@ -10,11 +10,16 @@ if not win_home:
 
 MAIL_DIR = os.path.join(win_home, "swarmmail", "inbox")
 
-def send_alert(subject, message, priority="normal"):
+def send_alert(subject, message_data, priority="normal"):
+    try:
+        parsed_message = json.loads(message_data)
+    except Exception:
+        parsed_message = message_data
+        
     alert = {
         "timestamp": datetime.now().isoformat(),
         "subject": subject,
-        "message": message,
+        "payload": parsed_message,
         "priority": priority
     }
     file_name = f"alert_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"

@@ -11,13 +11,14 @@ LAMP_DIR="$(dirname "$DEVMIND_LOG_DIR")"
 echo "Running Subconscious Daemon checks..."
 
 # Resource Monitors
-bash "$DEVMIND_SCRIPT_DIR/disk_monitor.sh" || echo "Disk check flagged an issue."
-bash "$DEVMIND_SCRIPT_DIR/ram_monitor.sh" || echo "RAM check flagged an issue."
+bash "$DEVMIND_SCRIPT_DIR/disk_monitor.sh" || { echo "Disk check flagged an issue."; python3 "$DEVMIND_SCRIPT_DIR/send_swarm_alert.py" "Disk Monitor Alert" '{"component": "disk_monitor", "status": "flagged issue"}' "high"; }
+bash "$DEVMIND_SCRIPT_DIR/ram_monitor.sh" || { echo "RAM check flagged an issue."; python3 "$DEVMIND_SCRIPT_DIR/send_swarm_alert.py" "RAM Monitor Alert" '{"component": "ram_monitor", "status": "flagged issue"}' "high"; }
 
 # 30-Minute Checkpoint
 python3 "$DEVMIND_SCRIPT_DIR/checkpoint-timer.py"
 if [ $? -eq 1 ]; then
     echo "🚨 30-MINUTE CHECKPOINT REACHED. Refreshing state."
+    python3 "$DEVMIND_SCRIPT_DIR/send_swarm_alert.py" "Checkpoint Reached" '{"component": "checkpoint", "action": "substrate-sync"}' "normal"
     bash "$DEVMIND_SCRIPT_DIR/substrate-sync.sh"
     python3 "$DEVMIND_SCRIPT_DIR/checkpoint-timer.py" reset
 fi

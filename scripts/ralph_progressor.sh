@@ -51,10 +51,12 @@ if [ ! -f "$STATE_FILE" ]; then
     exit 0
 fi
 
-if is_cli_skipped "gemini"; then
-    log "gemini OUT_OF_USAGE — deferring progression."
+SELECTED_AGENT=$(select_agent)
+if [ -z "$SELECTED_AGENT" ]; then
+    log "Entire agent tier OUT_OF_USAGE (gemini→opencode→codex→copilot→claude) — deferring progression."
     exit 0
 fi
+log "Tier head available: $SELECTED_AGENT (failover chain active)."
 
 # Read state with jq.
 if ! command -v jq >/dev/null 2>&1; then
@@ -94,22 +96,17 @@ if [ -n "$PROMISE" ]; then
 Completion promise: output <promise>$PROMISE</promise> when done."
 fi
 
-GEMINI_CLEAN="${GEMINI_CLEAN:-/home/fixxia/.local/bin/gemini-clean}"
-[[ -x "$GEMINI_CLEAN" ]] || GEMINI_CLEAN="gemini-clean"
-OUT=$(timeout 270s "$GEMINI_CLEAN" "${DEVMIND_GEMINI_FLAGS[@]}" -p "$ITER_PROMPT" 2>&1)
+# Dispatch through the cost-tiered failover router (gemini→opencode→codex→
+# copilot→claude). Each agent's quota is auto-detected; an exhausted agent is
+# skip-flagged and the next tier is tried — the loop only defers if ALL are out.
+DEVMIND_CLI_TIMEOUT=270 run_with_failover "$ITER_PROMPT" "$LOG_FILE"
 RC=$?
-echo "$OUT" >> "$LOG_FILE"
-
-# Quota detection — set skip flag so next cycle defers.
-check_output_for_quota "gemini" "$OUT" || {
-    log "Quota signal detected — skip flag set, iteration NOT incremented."
-    exit 0
-}
-
 if [ $RC -ne 0 ]; then
-    log "Gemini exit=$RC (non-quota). Iteration NOT incremented — will retry next cron tick."
+    log "All tier agents unavailable this cycle — iteration NOT incremented, will retry next tick."
     exit 0
 fi
+OUT="$DEVMIND_LAST_OUTPUT"
+log "Iteration executed by agent: ${DEVMIND_LAST_AGENT:-unknown}."
 
 # Detect completion-promise signal so the loop ends cleanly.
 if [ -n "$PROMISE" ] && echo "$OUT" | grep -qF "<promise>$PROMISE</promise>"; then

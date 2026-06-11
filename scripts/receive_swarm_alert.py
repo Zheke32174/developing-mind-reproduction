@@ -23,6 +23,11 @@ if __name__ == "__main__":
     if alerts:
         print(f"--- Received {len(alerts)} Swarm Alerts ---")
         for a in alerts:
-            print(f"[{a['priority'].upper()}] {a['subject']}: {a['message']}")
+            payload = a.get('payload', a.get('message', ''))
+            if isinstance(payload, dict) or isinstance(payload, list):
+                payload_str = json.dumps(payload, indent=2)
+            else:
+                payload_str = str(payload)
+            print(f"[{a['priority'].upper()}] {a['subject']}:\n{payload_str}")
     else:
         print("No new alerts.")

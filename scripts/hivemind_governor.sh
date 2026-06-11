@@ -111,6 +111,7 @@ run_direct() {
     local elapsed=$(( t1 - t0 ))
     if [[ $rc -eq 124 ]]; then
         session_log "TIMEOUT:$task_name (${elapsed}s) — not skipped, will retry next cycle"
+        python3 "$SCRIPT_DIR/send_swarm_alert.py" "Governor Timeout" "{\"task\": \"$task_name\", \"elapsed\": $elapsed}" "high"
         return 0
     elif [[ $rc -eq 0 ]]; then
         session_log "OK:$task_name (${elapsed}s)"
@@ -222,3 +223,4 @@ fi
 # ── End-of-cycle summary ──────────────────────────────────────────────────────
 elapsed_total=$(( $(date +%s) - CYCLE_START ))
 session_log "✅ Hivemind cycle complete (total=${elapsed_total}s / budget=${HIVEMIND_BUDGET_SECS}s)"
+D_BUDGET_SECS}s)"
