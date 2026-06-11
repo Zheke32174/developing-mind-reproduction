@@ -223,4 +223,10 @@ fi
 # ── End-of-cycle summary ──────────────────────────────────────────────────────
 elapsed_total=$(( $(date +%s) - CYCLE_START ))
 session_log "✅ Hivemind cycle complete (total=${elapsed_total}s / budget=${HIVEMIND_BUDGET_SECS}s)"
-D_BUDGET_SECS}s)"
+
+# Comprehensive SwarmMail end-of-cycle notification (Paper 2406.03075 - MC-MAD)
+python3 "$SCRIPT_DIR/send_swarm_alert.py" \
+    "Governor Cycle Complete" \
+    "{\"source\": \"hivemind_governor\", \"cycle_duration\": $elapsed_total, \"status\": \"cycle_complete\", \"tasks_summary\": \"6 tasks queued\"}" \
+    "normal"
+session_log "End-of-cycle SwarmMail notification sent"

@@ -8,13 +8,26 @@ win_home = os.environ.get("DEVMIND_WIN_HOME")
 if not win_home:
     win_home = os.path.expanduser("~")
 
-MAIL_DIR = os.path.join(win_home, "swarmmail", "inbox")
+# Use /tmp for testing, fallback to user home for production
+try:
+    os.makedirs(os.path.join(win_home, "swarmmail", "inbox"), exist_ok=True)
+    test_path = os.path.join(win_home, "swarmmail", "inbox", ".write_test")
+    with open(test_path, "w") as f:
+        f.write("test")
+    os.remove(test_path)
+    MAIL_DIR = os.path.join(win_home, "swarmmail", "inbox")
+except (PermissionError, OSError):
+    MAIL_DIR = "/tmp/swarmmail/inbox"
+    os.makedirs(MAIL_DIR, exist_ok=True)
 
 def send_alert(subject, message_data, priority="normal"):
     try:
         parsed_message = json.loads(message_data)
     except Exception:
         parsed_message = message_data
+    
+    # Ensure mail directory exists
+    os.makedirs(MAIL_DIR, exist_ok=True)
         
     alert = {
         "timestamp": datetime.now().isoformat(),

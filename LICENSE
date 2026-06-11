@@ -1,0 +1,24 @@
+DEVELOPING-MIND-REPRODUCTION — PROPRIETARY LICENSE
+====================================================
+
+Copyright (c) 2026 Fixxia (Zheke). All rights reserved.
+
+All commits in this repository were authored by Claude agents operating
+under Fixxia's direct authority (committer: zheke32174@gmail.com).
+All work product is Fixxia's original work.
+
+This repository contains:
+  - RYZ language development tree (ryz/, ryz-linux/, ryz-native-test/)
+  - Autonomous agent conductor and operator infrastructure
+  - Markovian paper reproduction research (ML substrate)
+  - Swarm planning and integration work
+
+This software and documentation is licensed under the PolyForm Strict
+License 1.0.0.
+Full base text: <https://polyformproject.org/licenses/strict/1.0.0>
+
+No distribution. No forks. No derivatives. No sublicensing.
+Authorized hive agents operating under Fixxia's authority may use,
+extend, and deploy this software on behalf of Fixxia.
+
+Required Notice: Copyright (c) 2026 Fixxia (Zheke) — Developing Mind Reproduction

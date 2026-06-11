@@ -1,0 +1,16 @@
+import "std/fmt"
+
+fn fib(n: i32) -> i32 {
+    if n < 2 { return n }
+    return fib(n - 1) + fib(n - 2)
+}
+
+fn main() -> i32 {
+    fmt.println("fib(10) =", fib(10))
+    mut i = 0
+    while i < 5 {
+        fmt.println("i =", i)
+        i = i + 1
+    }
+    return 0
+}

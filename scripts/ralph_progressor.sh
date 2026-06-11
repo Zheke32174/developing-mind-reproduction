@@ -46,6 +46,12 @@ fi
 echo $$ > "$LOCK_FILE"
 trap 'rm -f "$LOCK_FILE"' EXIT
 
+# Operator pause switch (set via Telegram 'pause'/'resume'). Honored = real control.
+if [ -f /home/fixxia/lamp/state/hive.paused ]; then
+    log "hive.paused present — mind loop halted by operator. Skipping iteration."
+    exit 0
+fi
+
 if [ ! -f "$STATE_FILE" ]; then
     log "No state.json — watchdog will initialize next pass."
     exit 0

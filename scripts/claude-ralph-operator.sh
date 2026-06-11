@@ -3,14 +3,14 @@
 # Role: Claude lead role for the Ralph Loop (Hardened & Portable).
 # Arxiv Anchor: 2604.24579 (Prop 1: Analytic Reliability)
 
-export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
-
-# 1. Dynamic Path Resolution
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
-REPRO_DIR="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)"
+# shellcheck source=devmind-env.sh
+source "$SCRIPT_DIR/devmind-env.sh"
+
+REPRO_DIR="${DEVMIND_REPRO_DIR:-$SCRIPT_DIR/..}"
 PLAN="$REPRO_DIR/swarm-plan/plan.md"
-LOG="$REPRO_DIR/scripts/claude_ralph_log.md"
-STATE="$REPRO_DIR/scripts/claude_ralph_state.json"
+LOG="${DEVMIND_LOG_DIR:-$REPRO_DIR/scripts}/claude_ralph_log.md"
+STATE="${DEVMIND_STATE_DIR:-$REPRO_DIR/scripts}/claude_ralph_state.json"
 GEMINI_SLOT_FILE="$REPRO_DIR/scripts/hivemind_governor.sh"
 
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")

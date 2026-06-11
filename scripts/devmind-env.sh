@@ -121,8 +121,8 @@ safe_run_cli() {
     output=$(timeout "${base_timeout}s" "$@" 2>&1)
     rc=$?
     if [[ $rc -eq 124 ]]; then
-        echo "[devmind] ⏱️  $cli TIMED OUT after ${base_timeout}s — checkpoint stop (not an error)." | tee -a "$log_file"
-        mark_cli_skipped "$cli" "timeout-gate-${base_timeout}s" 2>/dev/null || true
+        echo "[devmind] ⏱️  $cli TIMED OUT after ${base_timeout}s — 10min cooldown (slow, not quota)." | tee -a "$log_file"
+        DEVMIND_SKIP_TTL=600 mark_cli_skipped "$cli" "timeout-gate-${base_timeout}s" 2>/dev/null || true
         return 0
     fi
     echo "$output" | tee -a "$log_file"
@@ -214,20 +214,26 @@ select_agent() {
 run_agent() {
     local cli="$1" prompt="$2" log="${3:-$DEVMIND_LOG_DIR/run_agent.log}"
     local to="${DEVMIND_CLI_TIMEOUT:-270}" out rc
+    local LK="${DEVMIND_AGENT_LOCK:-/tmp/devmind-agent.lock}"
     if is_cli_skipped "$cli" >/dev/null 2>&1; then return 1; fi
+    # GLOBAL agent serialization: the 5.8GB box CANNOT run 2 heavy agents (~3GB each) at once.
+    # flock makes every agent call across the whole system serial → no RAM thrashing (load hit 18).
+    # -w 90: wait up to 90s for the running agent to finish; if not, defer (failover/skip this cycle).
     case "$cli" in
-        gemini)   out=$(timeout "${to}s" gemini-clean "${DEVMIND_GEMINI_FLAGS[@]}" -p "$prompt" 2>&1); rc=$? ;;
-        opencode) out=$(timeout "${to}s" opencode run "$prompt" 2>&1); rc=$? ;;
-        codex)    out=$(timeout "${to}s" codex exec --skip-git-repo-check "$prompt" 2>&1); rc=$? ;;
-        copilot)  out=$(timeout "${to}s" copilot -p "$prompt" --allow-all-tools 2>&1); rc=$? ;;
-        claude)   out=$(timeout "${to}s" claude --strict-mcp-config --setting-sources= -p "$prompt" 2>&1); rc=$? ;;
+        gemini)   out=$(flock -w 90 "$LK" timeout "${to}s" gemini-clean "${DEVMIND_GEMINI_FLAGS[@]}" -p "$prompt" 2>&1); rc=$? ;;
+        opencode) out=$(flock -w 90 "$LK" timeout "${to}s" opencode run "$prompt" 2>&1); rc=$? ;;
+        codex)    out=$(flock -w 90 "$LK" timeout "${to}s" codex exec --skip-git-repo-check "$prompt" 2>&1); rc=$? ;;
+        copilot)  out=$(flock -w 90 "$LK" timeout "${to}s" copilot -p "$prompt" --allow-all-tools 2>&1); rc=$? ;;
+        claude)   out=$(flock -w 90 "$LK" timeout "${to}s" claude --strict-mcp-config --setting-sources= -p "$prompt" 2>&1); rc=$? ;;
         *)        echo "[devmind] run_agent: unknown cli '$cli'" >> "$log"; return 2 ;;
     esac
     DEVMIND_LAST_OUTPUT="$out"; DEVMIND_LAST_AGENT="$cli"
     echo "$out" >> "$log"
     if [[ $rc -eq 124 ]]; then
-        echo "[devmind] ⏱️  $cli timed out after ${to}s — checkpoint skip." >> "$log"
-        mark_cli_skipped "$cli" "timeout-${to}s" >/dev/null 2>&1 || true
+        # A timeout means SLOW (agent was working), not quota-out. Short cooldown so the
+        # whole tier doesn't get banned for 6h by one slow heavy iteration.
+        echo "[devmind] ⏱️  $cli timed out after ${to}s — 10min cooldown (slow, not quota)." >> "$log"
+        DEVMIND_SKIP_TTL=600 mark_cli_skipped "$cli" "timeout-${to}s" >/dev/null 2>&1 || true
         return 1
     fi
     check_output_for_quota "$cli" "$out" || return 1   # quota → try next tier
