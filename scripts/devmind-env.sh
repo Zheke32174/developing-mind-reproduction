@@ -186,6 +186,23 @@ probe_cli_live() {
 # cron and is intentionally NOT in the prompt tier.
 # Override the order/set with DEVMIND_AGENT_TIER_OVERRIDE="gemini opencode ...".
 # ────────────────────────────────────────────────────────────────────────────
+# Named task-type tier presets (operator). Use via:
+#   DEVMIND_AGENT_TIER_OVERRIDE="$(devmind_tier plan)" run_with_failover "$PROMPT"
+#   or  DEVMIND_AGENT_TIER_OVERRIDE="$DEVMIND_TIER_PLAN" ...
+# DEFAULT/IMPORTANT: cost-ordered, claude-code + copilot as last-resort fallbacks so important
+#   tasks almost never die when one CLI is out-of-usage.
+# PLAN: brainstorming / planning / blueprint-greenlight — codex PRIMARY, gemini + claude fallbacks.
+DEVMIND_TIER_DEFAULT="gemini opencode codex copilot claude"
+DEVMIND_TIER_IMPORTANT="gemini opencode codex copilot claude"
+DEVMIND_TIER_PLAN="codex gemini claude"
+# devmind_tier <type> — echo the tier for a task type (default|important|plan|brainstorm|blueprint).
+devmind_tier() {
+    case "$1" in
+        plan|planning|brainstorm|brainstorming|blueprint|greenlight|design) echo "$DEVMIND_TIER_PLAN";;
+        important|critical) echo "$DEVMIND_TIER_IMPORTANT";;
+        *) echo "$DEVMIND_TIER_DEFAULT";;
+    esac
+}
 DEVMIND_AGENT_TIER=(${DEVMIND_AGENT_TIER_OVERRIDE:-gemini opencode codex copilot claude})
 
 # Set by run_agent so callers can inspect the winning agent's output (e.g. for
