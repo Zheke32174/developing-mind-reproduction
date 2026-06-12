@@ -35,13 +35,14 @@ def send_alert(subject, message_data, priority="normal"):
         "payload": parsed_message,
         "priority": priority
     }
-    file_name = f"alert_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    file_name = f"alert_{datetime.now().strftime('%Y%m%d_%H%M%S_%f')}.json"
     with open(os.path.join(MAIL_DIR, file_name), "w") as f:
         json.dump(alert, f, indent=2)
     print(f"Alert sent: {subject}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print("Usage: python3 send_swarm_alert.py <subject> <message>")
+        print("Usage: python3 send_swarm_alert.py <subject> <message> [priority]")
     else:
-        send_alert(sys.argv[1], sys.argv[2])
+        priority = sys.argv[3] if len(sys.argv) > 3 else "normal"
+        send_alert(sys.argv[1], sys.argv[2], priority)

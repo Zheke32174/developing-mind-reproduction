@@ -26,7 +26,7 @@ assert_gemini_intact() {
 # 3. Anchored Task Completion (Prevents 1.1 matching 1.10)
 mark_complete() {
   local task="$1"
-  sed -i "s/^- \[ \] ${task}[[:space:]]/- [x] ${task} /" "$PLAN"
+  sed -i "s/^- \[ \] ${task}[[:space:]]\$/- [x] ${task} /" "$PLAN"
 }
 
 run_task() {

@@ -25,7 +25,7 @@ DEVMIND_SKIP_TTL="${DEVMIND_SKIP_TTL:-21600}"
 DEVMIND_GEMINI_FLAGS=(--yolo --skip-trust)
 
 export DEVMIND_REPRO_DIR DEVMIND_STATE_DIR DEVMIND_QUOTA_STATE DEVMIND_LOG_DIR \
-       DEVMIND_GEMINI_DIR DEVMIND_GGA_PATH DEVMIND_SKIP_TTL DEVMIND_BACKUP_DIR
+       DEVMIND_GEMINI_DIR DEVMIND_GGA_PATH DEVMIND_SKIP_TTL DEVMIND_BACKUP_DIR DEVMIND_WIN_HOME
 
 # Quota patterns: CLI is out of paid usage (needs longer cooldown but NOT permanent).
 DEVMIND_OUT_OF_USAGE_PATTERNS="out of usage|usage limit reached|account.*suspended|no.*credits|billing.*required|subscription.*expired|access.*revoked"
