@@ -75,6 +75,13 @@ ITER=$(jq -r '.current_iteration // 0' "$STATE_FILE")
 MAX=$(jq -r '.max_iterations // 0' "$STATE_FILE")
 PROMPT=$(jq -r '.original_prompt // ""' "$STATE_FILE")
 PROMISE=$(jq -r '.completion_promise // ""' "$STATE_FILE")
+# A5 gate: a concrete shell check that MUST pass for the <promise> to be honored.
+# When set in state.json, the promise is ignored unless promise_check exits 0 — this
+# kills "promise-on-iter-0" (an agent claiming done with no checkable artifact).
+PROMISE_CHECK=$(jq -r '.promise_check // ""' "$STATE_FILE")
+# A6 work-locus: per-goal working directory. Bounty goals run in the bounty-pipeline,
+# NOT the devmind repo, so their commands (pool-triage.sh, jq queue/*.json) resolve.
+WORK_DIR=$(jq -r '.work_dir // ""' "$STATE_FILE")
 
 if [ "$ACTIVE" != "true" ]; then
     log "Loop inactive. Watchdog handles restart."
@@ -90,8 +97,16 @@ if [ -z "$PROMPT" ]; then
     exit 0
 fi
 
-cd "$REPRO_DIR" || exit 0
-log "Advancing Ralph iteration $ITER → $((ITER+1)) of $MAX"
+# A6: honor per-goal work_dir when present + valid; else default to the devmind repo.
+RUN_DIR="$REPRO_DIR"
+if [ -n "$WORK_DIR" ] && [ -d "$WORK_DIR" ]; then
+    RUN_DIR="$WORK_DIR"
+    log "Per-goal work_dir honored: $RUN_DIR"
+elif [ -n "$WORK_DIR" ]; then
+    log "work_dir '$WORK_DIR' not a directory — falling back to $REPRO_DIR"
+fi
+cd "$RUN_DIR" || exit 0
+log "Advancing Ralph iteration $ITER → $((ITER+1)) of $MAX (cwd=$RUN_DIR)"
 
 # Compose the iteration message — same shape the stop-hook would have used.
 ITER_PROMPT="Ralph iteration $((ITER+1))/$MAX. Continue the loop. Original goal:
@@ -116,10 +131,25 @@ log "Iteration executed by agent: ${DEVMIND_LAST_AGENT:-unknown}."
 
 # Detect completion-promise signal so the loop ends cleanly.
 if [ -n "$PROMISE" ] && echo "$OUT" | grep -qF "<promise>$PROMISE</promise>"; then
-    log "Promise fulfilled. Marking loop inactive."
-    jq --arg p "$PROMISE" '.active=false | .completed_promise=$p' "$STATE_FILE" \
-        > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
-    exit 0
+    # A5 PROMISE GATE: a <promise> is honored ONLY if a concrete checkable artifact
+    # exists. If promise_check is set, it MUST exit 0; otherwise the promise is a
+    # claim with no proof (the classic promise-on-iter-0) and we REJECT it — the
+    # iteration still counts but the loop is NOT marked done.
+    if [ -n "$PROMISE_CHECK" ]; then
+        if ( cd "$RUN_DIR" && bash -c "$PROMISE_CHECK" >/dev/null 2>&1 ); then
+            log "Promise fulfilled AND artifact check passed ($PROMISE_CHECK). Marking loop inactive."
+            jq --arg p "$PROMISE" '.active=false | .completed_promise=$p' "$STATE_FILE" \
+                > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+            exit 0
+        else
+            log "Promise CLAIMED but artifact check FAILED ($PROMISE_CHECK) — rejecting promise, loop continues."
+        fi
+    else
+        log "Promise signalled but no promise_check defined — honoring (legacy path). Set .promise_check to gate."
+        jq --arg p "$PROMISE" '.active=false | .completed_promise=$p' "$STATE_FILE" \
+            > "$STATE_FILE.tmp" && mv "$STATE_FILE.tmp" "$STATE_FILE"
+        exit 0
+    fi
 fi
 
 # Increment iteration.
