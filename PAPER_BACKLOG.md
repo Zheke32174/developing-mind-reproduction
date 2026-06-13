@@ -1,5 +1,5 @@
 # Paper Integration Backlog
-_generated 2026-06-12T09:30:01Z by paper-feeder.sh — substrate growth for the developing mind_
+_generated 2026-06-13T09:30:02Z by paper-feeder.sh — substrate growth for the developing mind_
 
 **Integrated:** 15  |  **arxiv candidates:** 16  |  **arxiv pending:** 1  |  **slug-dir papers:** 89
 
