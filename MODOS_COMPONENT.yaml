@@ -1,0 +1,38 @@
+apiVersion: modos.pleiades/v1alpha1
+kind: Component
+metadata:
+  name: developing-mind-reproduction
+  repository: Zheke32174/developing-mind-reproduction
+  visibility: public
+  lifecycle: experimental
+  defaultBranch: master
+spec:
+  roles:
+    - persistent-mind-research
+    - memory-reproduction
+    - cognitive-continuity-experiment
+  authority: proposal
+  inputs:
+    - typed-experiences
+    - memory-snapshots
+    - model-contributions
+    - outcome-evidence
+  outputs:
+    - mind-state-candidates
+    - memory-lineage
+    - continuity-evaluations
+  capabilitiesProvided:
+    - mind.state.propose
+    - memory.reconstruct.propose
+    - cognition.self-model.propose
+  capabilitiesRequired:
+    - memory.read.scoped
+    - ghost.world.execute
+    - evaluation.record
+  dataClasses:
+    - public
+    - internal
+    - private
+  failurePolicy: non-operational
+  promotionPolicy: evidence-gated
+  notes: This repository may explore persistent cognitive organization but cannot grant capabilities or become the deterministic authority path.
