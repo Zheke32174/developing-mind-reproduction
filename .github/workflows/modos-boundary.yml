@@ -1,0 +1,22 @@
+name: MODOS Boundary
+
+on:
+  push:
+    branches:
+      - master
+      - 'codex/**'
+      - 'modos/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  promotion-before-canon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check sync script syntax
+        run: bash -n scripts/substrate-sync.sh
+      - name: Test publication policy
+        run: python3 -m unittest tests/test_substrate_sync_policy.py
