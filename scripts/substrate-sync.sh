@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Developing Mind — substrate-sync (AST Validated, GGA-Gated, Autonomy-Safe)
+# Developing Mind — substrate-sync (AST Validated, GGA-Gated, Promotion-Safe)
 # Arxiv Anchor: 2410.02724 & 2604.24579 (Prop 1: Analytic Reliability)
 #
-# Hardened for unattended cron operation:
+# Hardened for unattended operation:
 #   - Never blocks the hivemind cycle on git/GGA failures.
+#   - Performs no repository mutation unless branch publication is explicitly enabled.
+#   - Refuses direct publication to main/master and requires the checked-out branch
+#     to match the named proposal branch.
 #   - Adds only intended source paths (src/, scripts/, swarm-plan/, tests/, *.md).
 #   - Refuses to stage runtime state, backup files, or skip flags (.gitignore filters them).
-#   - All failure paths exit 0 so the governor keeps running.
 
 export PATH="/home/fixxia/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
@@ -21,9 +23,31 @@ GGA_PATH="${DEVMIND_GGA_PATH:-${REPRO_DIR}/../scripts/gga_repo/bin/gga}"
 
 cd "$REPRO_DIR" || { echo "❌ Cannot enter $REPRO_DIR"; exit 0; }
 
-# Opt-out for pure verification cycles.
-if [[ "${DEVMIND_NO_PUSH:-0}" == "1" ]]; then
-    echo "ℹ️  DEVMIND_NO_PUSH=1 — skipping git operations entirely."
+# Repository publication is opt-in. DEVMIND_NO_PUSH remains a hard legacy veto.
+if [[ "${DEVMIND_NO_PUSH:-0}" == "1" || "${DEVMIND_ALLOW_PUSH:-0}" != "1" ]]; then
+    echo "ℹ️  Repository publication disabled; set DEVMIND_ALLOW_PUSH=1 and DEVMIND_PUSH_BRANCH=<proposal-branch> explicitly."
+    exit 0
+fi
+
+PUSH_BRANCH="${DEVMIND_PUSH_BRANCH:-}"
+if [[ -z "$PUSH_BRANCH" ]]; then
+    echo "⚠️  DEVMIND_PUSH_BRANCH is required when publication is enabled. Skipping sync."
+    exit 0
+fi
+case "$PUSH_BRANCH" in
+    main|master|refs/heads/main|refs/heads/master)
+        echo "⚠️  Direct publication to the protected default branch is forbidden. Use a proposal branch and PR."
+        exit 0
+        ;;
+esac
+if [[ ! "$PUSH_BRANCH" =~ ^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$ || "$PUSH_BRANCH" == *".."* ]]; then
+    echo "⚠️  DEVMIND_PUSH_BRANCH is not a safe branch name. Skipping sync."
+    exit 0
+fi
+
+CURRENT_BRANCH="$(git branch --show-current 2>/dev/null || true)"
+if [[ -z "$CURRENT_BRANCH" || "$CURRENT_BRANCH" != "$PUSH_BRANCH" ]]; then
+    echo "⚠️  Checked-out branch '$CURRENT_BRANCH' does not match proposal branch '$PUSH_BRANCH'. Skipping sync."
     exit 0
 fi
 
@@ -54,11 +78,11 @@ fi
 
 echo "👼 Guardian Angel: Reviewing cognitive snapshot..."
 if timeout 300s "$GGA_PATH" run; then
-    echo "✅ Review passed. Syncing to GitHub..."
+    echo "✅ Review passed. Publishing proposal branch..."
     MSG="${1:-PSS: Algorithmic Snapshot with AST Validation - Gated by GGA}"
     if git commit -m "$MSG" >/dev/null 2>&1; then
-        if ! git push origin master 2>&1; then
-            echo "⚠️  git push failed (non-fatal). Cycle continues."
+        if ! git push origin "HEAD:refs/heads/$PUSH_BRANCH" 2>&1; then
+            echo "⚠️  proposal-branch push failed (non-fatal). Cycle continues."
         fi
     else
         echo "⚠️  git commit produced no commit (possibly empty after filters)."
