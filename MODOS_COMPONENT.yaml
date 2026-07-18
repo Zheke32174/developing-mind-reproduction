@@ -21,6 +21,7 @@ spec:
     - mind-state-candidates
     - memory-lineage
     - continuity-evaluations
+    - proposal-branch-change-sets
   capabilitiesProvided:
     - mind.state.propose
     - memory.reconstruct.propose
@@ -28,11 +29,16 @@ spec:
   capabilitiesRequired:
     - memory.read.scoped
     - ghost.world.execute
+    - workspace.isolated
     - evaluation.record
+    - repository.branch.write.proposed
+    - steward.approval.promotion
   dataClasses:
     - public
     - internal
     - private
+    - evidence
+    - untrusted
   failurePolicy: non-operational
   promotionPolicy: evidence-gated
-  notes: This repository may explore persistent cognitive organization but cannot grant capabilities or become the deterministic authority path.
+  notes: This repository may explore persistent cognitive organization and publish explicitly authorized proposal branches, but it cannot push directly to the protected default branch, grant capabilities, promote its own output, or become the deterministic authority path.
