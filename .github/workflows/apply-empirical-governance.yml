@@ -1,5 +1,7 @@
 name: Apply empirical governance repair
 
+# Branch-scoped one-shot. A successful run deletes this workflow and its patch,
+# leaving only the validated production implementation.
 on:
   push:
     branches:
