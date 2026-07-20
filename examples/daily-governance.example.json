@@ -1,64 +1,34 @@
 {
-  "schema": "developing-mind.daily-governance/v1",
+  "schema": "developing-mind.daily-execution-evidence/v1",
   "date": "20260719",
-  "plan_id": "lamp-plan-20260719",
+  "record_id": "daily-execution-20260719",
+  "plan_id": "plan-20260719",
+  "plan_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "created_at": "2026-07-20T06:59:00Z",
+  "provenance": {
+    "collector": "lamp-governance-recorder/v1",
+    "source_refs": [
+      "git:Zheke32174/developing-mind-reproduction@example",
+      "artifact:verification/compile.json"
+    ]
+  },
   "actions": [
     {
-      "action_id": "refresh-memory-index",
-      "objective": "Refresh the bounded memory index and verify the published generation.",
+      "action_id": "compile",
       "attempted": true,
       "outcome": "success",
       "verification": {
-        "status": "passed",
-        "evidence_refs": [
-          "receipt://memory-index/20260719/sha256-example"
+        "status": "verified",
+        "receipts": [
+          "artifact:verification/compile.json"
         ]
       },
       "rollback": {
         "status": "not-required",
-        "evidence_refs": []
-      },
-      "provenance": {
-        "actor": "developing-mind/lamp",
-        "source_refs": [
-          "plan://lamp-plan-20260719/action/refresh-memory-index",
-          "log://lamp/20260719/refresh-memory-index"
-        ]
-      }
-    },
-    {
-      "action_id": "repair-failed-evaluation",
-      "objective": "Repair one failed evaluation fixture and verify the corrected result.",
-      "attempted": true,
-      "outcome": "recovered",
-      "verification": {
-        "status": "passed",
-        "evidence_refs": [
-          "receipt://evaluation/20260719/corrected"
-        ]
-      },
-      "rollback": {
-        "status": "succeeded",
-        "evidence_refs": [
-          "receipt://evaluation/20260719/refinement"
-        ]
-      },
-      "provenance": {
-        "actor": "developing-mind/swarm",
-        "source_refs": [
-          "plan://lamp-plan-20260719/action/repair-failed-evaluation",
-          "log://swarm/20260719/repair-failed-evaluation"
-        ]
+        "receipts": []
       }
     }
   ],
   "unresolved_failures": [],
-  "provenance": {
-    "generated_by": "developing-mind/daily-recorder-v1",
-    "source_refs": [
-      "plan://lamp-plan-20260719",
-      "log://lamp/20260719",
-      "log://swarm/20260719"
-    ]
-  }
+  "record_digest": "sha256:16f319e2269517fa2e44016c5ae9830c0b3ea3bf9508b9a917b8d88a8f0a9cdc"
 }
