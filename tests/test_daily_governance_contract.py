@@ -6,70 +6,70 @@ import pathlib
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-SCRIPT = ROOT / "scripts" / "daily_governance.py"
-SPEC = importlib.util.spec_from_file_location("daily_governance_contract", SCRIPT)
+SPEC = importlib.util.spec_from_file_location(
+    "daily_governance_contract_under_test",
+    ROOT / "scripts" / "daily_governance.py",
+)
 assert SPEC is not None and SPEC.loader is not None
 GOVERNANCE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(GOVERNANCE)
 
 
 class DailyGovernanceContractTests(unittest.TestCase):
-    def test_schema_and_example_are_valid_json(self) -> None:
-        schema = json.loads(
+    def setUp(self):
+        self.schema = json.loads(
             (ROOT / "schemas" / "daily-governance-v1.schema.json").read_text(
                 encoding="utf-8"
             )
         )
-        example = json.loads(
+        self.example = json.loads(
             (ROOT / "examples" / "daily-governance.example.json").read_text(
                 encoding="utf-8"
             )
         )
-        self.assertEqual(
-            schema["$schema"], "https://json-schema.org/draft/2020-12/schema"
-        )
-        self.assertEqual(
-            schema["properties"]["schema"]["const"],
-            GOVERNANCE.DAILY_RECORD_SCHEMA,
-        )
-        self.assertEqual(example["schema"], GOVERNANCE.DAILY_RECORD_SCHEMA)
 
-    def test_published_example_passes_runtime_validation(self) -> None:
-        path = ROOT / "examples" / "daily-governance.example.json"
-        record = GOVERNANCE.load_daily_record(path, "20260719")
-        self.assertEqual(record["plan_id"], "lamp-plan-20260719")
+    def test_schema_and_example_identify_runtime_contract(self):
         self.assertEqual(
-            [action["outcome"] for action in record["actions"]],
-            ["success", "recovered"],
+            self.schema["properties"]["schema"]["const"],
+            GOVERNANCE.EVIDENCE_SCHEMA,
         )
-        self.assertEqual(record["unresolved_failures"], [])
-
-    def test_schema_requires_runtime_fields(self) -> None:
-        schema = json.loads(
-            (ROOT / "schemas" / "daily-governance-v1.schema.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        self.assertTrue(
+        self.assertEqual(self.example["schema"], GOVERNANCE.EVIDENCE_SCHEMA)
+        self.assertEqual(
+            set(self.schema["required"]),
             {
                 "schema",
                 "date",
+                "record_id",
                 "plan_id",
+                "plan_digest",
+                "created_at",
+                "provenance",
                 "actions",
                 "unresolved_failures",
-                "provenance",
-            }.issubset(set(schema["required"]))
+                "record_digest",
+            },
         )
-        self.assertTrue(
-            {
-                "action_id",
-                "objective",
-                "attempted",
-                "outcome",
-                "verification",
-                "rollback",
-                "provenance",
-            }.issubset(set(schema["$defs"]["action"]["required"]))
+
+    def test_example_digest_and_runtime_validation_match(self):
+        self.assertEqual(
+            self.example["record_digest"],
+            GOVERNANCE.evidence_digest(self.example),
+        )
+        traces, blockers = GOVERNANCE.validate_evidence(
+            self.example,
+            self.example["date"],
+        )
+        self.assertEqual(traces, [["init", "execute", "verify", "success"]])
+        self.assertEqual(blockers, [])
+
+    def test_schema_preserves_receipt_and_digest_requirements(self):
+        action = self.schema["properties"]["actions"]["items"]
+        self.assertFalse(action["additionalProperties"])
+        self.assertIn("verification", action["required"])
+        self.assertIn("rollback", action["required"])
+        self.assertEqual(
+            self.schema["properties"]["record_digest"]["pattern"],
+            "^sha256:[0-9a-f]{64}$",
         )
 
 
