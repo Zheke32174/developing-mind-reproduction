@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: modos-boundary-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   promotion-before-canon:
     runs-on: ubuntu-latest
@@ -31,5 +35,26 @@ jobs:
           python3 -m json.tool examples/daily-governance.example.json >/dev/null
       - name: Check sync script syntax
         run: bash -n scripts/substrate-sync.sh
-      - name: Test publication and governance policy
-        run: python3 -m unittest discover -s tests -v
+      - name: Capture complete publication and governance test report
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          python3 -m unittest discover -s tests -v > governance-tests.log 2>&1
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          cat governance-tests.log
+          exit 0
+      - name: Upload governance test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-tests-${{ github.sha }}
+          path: governance-tests.log
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce governance test result
+        if: always()
+        env:
+          TEST_EXIT: ${{ steps.tests.outputs.exit_code }}
+        run: test "$TEST_EXIT" = 0
