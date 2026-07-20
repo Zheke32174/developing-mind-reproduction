@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Developing Mind daily governance over typed, content-addressed evidence.
+"""Developing Mind daily governance verification.
 
-The governance loop never treats a Markdown file or model-calibration fixture as
-proof. It derives transition traces from the previous day's immutable execution
-record and fails closed on missing, malformed, contradictory, or incomplete
-evidence.
+The governance decision is derived from a typed execution/evidence record. A
+Markdown file's existence is never treated as proof, and synthetic traces are
+not accepted as evidence of plan success.
 """
 
 from __future__ import annotations
@@ -12,42 +11,42 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import pathlib
-import re
 import sys
-import tempfile
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 
-SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
-REPRO_DIR = pathlib.Path(os.environ.get("DEVMIND_REPRO_DIR", SCRIPT_DIR.parent))
-LAMP_DIR = pathlib.Path(os.environ.get("DEVMIND_LAMP_DIR", pathlib.Path.home() / "lamp"))
-LAMP_LOGS = pathlib.Path(os.environ.get("DEVMIND_LOG_DIR", LAMP_DIR / "logs"))
-STATE_FILE = pathlib.Path(
+# Substrate paths. Prefer explicit env, then repo-relative discovery, then
+# normal home paths. Legacy WSL paths are fallback-only.
+SCRIPT_DIR = Path(__file__).resolve().parent
+REPRO_DIR = Path(os.environ.get("DEVMIND_REPRO_DIR", SCRIPT_DIR.parent))
+LAMP_DIR = Path(os.environ.get("DEVMIND_LAMP_DIR", Path.home() / "lamp"))
+LAMP_LOGS = Path(os.environ.get("DEVMIND_LOG_DIR", LAMP_DIR / "logs"))
+STATE_FILE = Path(
     os.environ.get(
-        "DEVMIND_GOVERNANCE_STATE",
-        REPRO_DIR / "scripts" / "governance_state.json",
+        "DEVMIND_GOVERNANCE_STATE", REPRO_DIR / "scripts" / "governance_state.json"
     )
 )
 
+# Dynamic import from the Markovian core substrate.
 sys.path.append(str(REPRO_DIR / "src"))
 try:
     from papers.paper_2604_24579.reliability import TraceToChain
 except ImportError:
     TraceToChain = None
 
-EVIDENCE_SCHEMA = "developing-mind.daily-execution-evidence/v1"
-STATE_SCHEMA = "developing-mind.governance-state/v2"
-MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
-MAX_ACTIONS = 4096
-DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
+DAILY_RECORD_SCHEMA = "developing-mind.daily-governance/v1"
 RELIABILITY_THRESHOLD = float(
-    os.environ.get("DEVMIND_RELIABILITY_THRESHOLD", "0.45")
+    os.environ.get("DEVMIND_RELIABILITY_THRESHOLD", "0.85")
 )
+SUCCESS_OUTCOMES = {"success", "recovered"}
+ALL_OUTCOMES = SUCCESS_OUTCOMES | {"failed", "aborted", "timeout"}
+VERIFICATION_STATUSES = {"passed", "failed", "missing"}
+ROLLBACK_STATUSES = {"not-required", "succeeded", "failed", "not-attempted"}
 
 
-class GovernanceError(ValueError):
-    """Raised when daily evidence cannot support a governance decision."""
+class GovernanceRecordError(ValueError):
+    """Raised when a daily evidence record is malformed or self-contradictory."""
 
 
 def utc_now() -> str:
@@ -66,332 +65,347 @@ def canonical_bytes(value: Any) -> bytes:
     ).encode("utf-8")
 
 
-def digest_id(value: Any) -> str:
+def record_digest(value: Any) -> str:
     return "sha256:" + hashlib.sha256(canonical_bytes(value)).hexdigest()
 
 
-def evidence_digest(record: dict[str, Any]) -> str:
-    material = dict(record)
-    material["record_digest"] = ""
-    return digest_id(material)
-
-
-def require_string(value: Any, field: str, *, maximum: int = 512) -> str:
-    if not isinstance(value, str) or not value.strip() or len(value) > maximum:
-        raise GovernanceError(f"{field} must be a non-empty bounded string")
+def require_string(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise GovernanceRecordError(f"{field} must be a non-empty string")
     return value.strip()
 
 
-def require_string_list(
-    value: Any,
-    field: str,
-    *,
-    nonempty: bool = False,
-    maximum: int = 4096,
-) -> list[str]:
-    if not isinstance(value, list) or len(value) > maximum:
-        raise GovernanceError(f"{field} must be a bounded string array")
-    result = [require_string(item, f"{field}[]") for item in value]
-    if nonempty and not result:
-        raise GovernanceError(f"{field} must not be empty")
-    if len(result) != len(set(result)):
-        raise GovernanceError(f"{field} contains duplicate entries")
-    return result
+def require_refs(value: Any, field: str, *, allow_empty: bool = False) -> list[str]:
+    if not isinstance(value, list) or (not allow_empty and not value):
+        raise GovernanceRecordError(f"{field} must be an evidence-reference array")
+    if not all(isinstance(item, str) and item.strip() for item in value):
+        raise GovernanceRecordError(f"{field} contains an invalid evidence reference")
+    return [item.strip() for item in value]
 
 
-def validate_action(raw: Any, index: int) -> tuple[dict[str, Any], list[str], bool]:
+def validate_action(raw: Any, index: int) -> dict[str, Any]:
+    field = f"actions[{index}]"
     if not isinstance(raw, dict):
-        raise GovernanceError(f"actions[{index}] must be an object")
+        raise GovernanceRecordError(f"{field} must be an object")
 
-    action_id = require_string(raw.get("action_id"), f"actions[{index}].action_id", maximum=128)
+    action_id = require_string(raw.get("action_id"), f"{field}.action_id")
+    objective = require_string(raw.get("objective"), f"{field}.objective")
     attempted = raw.get("attempted")
     if not isinstance(attempted, bool):
-        raise GovernanceError(f"actions[{index}].attempted must be boolean")
+        raise GovernanceRecordError(f"{field}.attempted must be boolean")
+
     outcome = raw.get("outcome")
-    if outcome not in {"success", "failure", "rolled-back", "skipped"}:
-        raise GovernanceError(f"actions[{index}].outcome is invalid")
+    if outcome not in ALL_OUTCOMES:
+        raise GovernanceRecordError(
+            f"{field}.outcome must be one of {sorted(ALL_OUTCOMES)}"
+        )
 
     verification = raw.get("verification")
     if not isinstance(verification, dict):
-        raise GovernanceError(f"actions[{index}].verification must be an object")
+        raise GovernanceRecordError(f"{field}.verification must be an object")
     verification_status = verification.get("status")
-    if verification_status not in {"verified", "failed", "missing"}:
-        raise GovernanceError(f"actions[{index}].verification.status is invalid")
-    verification_receipts = require_string_list(
-        verification.get("receipts"),
-        f"actions[{index}].verification.receipts",
+    if verification_status not in VERIFICATION_STATUSES:
+        raise GovernanceRecordError(
+            f"{field}.verification.status must be one of "
+            f"{sorted(VERIFICATION_STATUSES)}"
+        )
+    verification_refs = require_refs(
+        verification.get("evidence_refs", []),
+        f"{field}.verification.evidence_refs",
+        allow_empty=verification_status != "passed",
     )
 
     rollback = raw.get("rollback")
     if not isinstance(rollback, dict):
-        raise GovernanceError(f"actions[{index}].rollback must be an object")
+        raise GovernanceRecordError(f"{field}.rollback must be an object")
     rollback_status = rollback.get("status")
-    if rollback_status not in {"not-required", "completed", "failed", "pending"}:
-        raise GovernanceError(f"actions[{index}].rollback.status is invalid")
-    rollback_receipts = require_string_list(
-        rollback.get("receipts"),
-        f"actions[{index}].rollback.receipts",
+    if rollback_status not in ROLLBACK_STATUSES:
+        raise GovernanceRecordError(
+            f"{field}.rollback.status must be one of {sorted(ROLLBACK_STATUSES)}"
+        )
+    rollback_refs = require_refs(
+        rollback.get("evidence_refs", []),
+        f"{field}.rollback.evidence_refs",
+        allow_empty=rollback_status != "succeeded",
     )
 
-    if verification_status == "verified" and not verification_receipts:
-        raise GovernanceError(
-            f"actions[{index}] claims verification without a receipt"
-        )
-    if rollback_status == "completed" and not rollback_receipts:
-        raise GovernanceError(
-            f"actions[{index}] claims rollback completion without a receipt"
-        )
+    provenance = raw.get("provenance")
+    if not isinstance(provenance, dict):
+        raise GovernanceRecordError(f"{field}.provenance must be an object")
+    actor = require_string(provenance.get("actor"), f"{field}.provenance.actor")
+    source_refs = require_refs(
+        provenance.get("source_refs"), f"{field}.provenance.source_refs"
+    )
 
-    trace = ["init"]
-    successful = False
-    if not attempted:
-        if outcome != "skipped" or verification_status != "missing":
-            raise GovernanceError(
-                f"actions[{index}] is contradictory: unattempted work must be skipped and unverified"
+    if outcome in SUCCESS_OUTCOMES and not attempted:
+        raise GovernanceRecordError(f"{field} cannot succeed without an attempt")
+    if outcome == "success" and verification_status != "passed":
+        raise GovernanceRecordError(f"{field} success requires passed verification")
+    if outcome == "recovered":
+        if verification_status != "passed":
+            raise GovernanceRecordError(
+                f"{field} recovered outcome requires passed verification"
             )
-        if rollback_status != "not-required":
-            raise GovernanceError(
-                f"actions[{index}] is contradictory: unattempted work cannot have rollback state"
+        if rollback_status != "succeeded":
+            raise GovernanceRecordError(
+                f"{field} recovered outcome requires succeeded rollback/refinement"
             )
-        trace.append("abort")
-    else:
-        trace.append("execute")
-        if outcome == "success":
-            trace.append("verify")
-            if verification_status == "verified" and rollback_status in {
-                "not-required",
-                "completed",
-            }:
-                trace.append("success")
-                successful = True
-            else:
-                trace.extend(["error", "abort"])
-        elif outcome == "rolled-back":
-            if rollback_status != "completed":
-                raise GovernanceError(
-                    f"actions[{index}] claims rolled-back outcome without completed rollback"
-                )
-            trace.extend(["error", "refine", "abort"])
-        elif outcome == "failure":
-            trace.extend(["error", "abort"])
-        else:
-            raise GovernanceError(
-                f"actions[{index}] is contradictory: attempted work cannot be skipped"
-            )
+    if outcome in {"failed", "timeout"} and not attempted:
+        raise GovernanceRecordError(f"{field} {outcome} outcome requires an attempt")
 
-    normalized = {
+    return {
         "action_id": action_id,
+        "objective": objective,
         "attempted": attempted,
         "outcome": outcome,
         "verification": {
             "status": verification_status,
-            "receipts": verification_receipts,
+            "evidence_refs": verification_refs,
         },
-        "rollback": {
-            "status": rollback_status,
-            "receipts": rollback_receipts,
-        },
-    }
-    return normalized, trace, successful
-
-
-def validate_evidence(
-    record: dict[str, Any], expected_day: str
-) -> tuple[list[list[str]], list[str]]:
-    if record.get("schema") != EVIDENCE_SCHEMA:
-        raise GovernanceError(f"evidence schema must be {EVIDENCE_SCHEMA}")
-    if record.get("date") != expected_day:
-        raise GovernanceError("evidence date does not match the governed day")
-
-    require_string(record.get("record_id"), "record_id", maximum=128)
-    require_string(record.get("plan_id"), "plan_id", maximum=128)
-    plan_digest = record.get("plan_digest")
-    if not isinstance(plan_digest, str) or not DIGEST_RE.fullmatch(plan_digest):
-        raise GovernanceError("plan_digest must be a canonical sha256 identity")
-    require_string(record.get("created_at"), "created_at", maximum=64)
-
-    provenance = record.get("provenance")
-    if not isinstance(provenance, dict):
-        raise GovernanceError("provenance must be an object")
-    require_string(provenance.get("collector"), "provenance.collector", maximum=128)
-    require_string_list(
-        provenance.get("source_refs"),
-        "provenance.source_refs",
-        nonempty=True,
-    )
-
-    unresolved = require_string_list(
-        record.get("unresolved_failures"),
-        "unresolved_failures",
-    )
-    actions = record.get("actions")
-    if not isinstance(actions, list) or not actions or len(actions) > MAX_ACTIONS:
-        raise GovernanceError("actions must be a non-empty bounded array")
-
-    traces: list[list[str]] = []
-    action_ids: set[str] = set()
-    unsuccessful: list[str] = []
-    for index, raw in enumerate(actions):
-        action, trace, successful = validate_action(raw, index)
-        if action["action_id"] in action_ids:
-            raise GovernanceError(f"duplicate action_id: {action['action_id']}")
-        action_ids.add(action["action_id"])
-        traces.append(trace)
-        if not successful:
-            unsuccessful.append(action["action_id"])
-
-    claimed_digest = record.get("record_digest")
-    if not isinstance(claimed_digest, str) or not DIGEST_RE.fullmatch(claimed_digest):
-        raise GovernanceError("record_digest must be a canonical sha256 identity")
-    calculated_digest = evidence_digest(record)
-    if claimed_digest != calculated_digest:
-        raise GovernanceError("daily evidence digest mismatch")
-
-    blockers = list(unresolved)
-    blockers.extend(f"action-not-proven-successful:{item}" for item in unsuccessful)
-    return traces, blockers
-
-
-def load_daily_evidence(day: str) -> tuple[pathlib.Path, dict[str, Any]]:
-    path = LAMP_LOGS / f"daily-{day}.execution.json"
-    if path.is_symlink() or not path.is_file():
-        raise GovernanceError(f"typed daily execution evidence is missing: {path}")
-    try:
-        size = path.stat().st_size
-    except OSError as exc:
-        raise GovernanceError(f"cannot stat daily evidence: {exc}") from exc
-    if size < 2 or size > MAX_EVIDENCE_BYTES:
-        raise GovernanceError(
-            f"daily evidence size is outside 2..{MAX_EVIDENCE_BYTES} bytes"
-        )
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise GovernanceError(f"cannot parse daily evidence: {exc}") from exc
-    if not isinstance(value, dict):
-        raise GovernanceError("daily evidence top level must be one object")
-    return path, value
-
-
-def evaluate_governance(day: str | None = None) -> dict[str, Any]:
-    governed_day = day or (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
-    receipt: dict[str, Any] = {
-        "schema": STATE_SCHEMA,
-        "governed_day": governed_day,
-        "checked_at": utc_now(),
-        "threshold": RELIABILITY_THRESHOLD,
-        "mode": "REFINEMENT",
-        "passed": False,
-        "blockers": [],
+        "rollback": {"status": rollback_status, "evidence_refs": rollback_refs},
+        "provenance": {"actor": actor, "source_refs": source_refs},
     }
 
-    try:
-        evidence_path, record = load_daily_evidence(governed_day)
-        traces, blockers = validate_evidence(record, governed_day)
-        receipt["evidence_path"] = str(evidence_path)
-        receipt["evidence_digest"] = record["record_digest"]
-        receipt["plan_digest"] = record["plan_digest"]
-        receipt["trace_digest"] = digest_id(traces)
-        receipt["trace_count"] = len(traces)
-        receipt["blockers"] = blockers
 
-        if TraceToChain is None:
-            raise GovernanceError(
-                "TraceToChain unavailable; governance reliability cannot be derived"
-            )
-
-        model = TraceToChain(
-            transient_states=["init", "execute", "verify", "error", "refine"],
-            success_states={"success"},
-            failure_states={"abort", "timeout"},
+def validate_daily_record(raw: Any, expected_date: str) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise GovernanceRecordError("daily governance record must be an object")
+    if raw.get("schema") != DAILY_RECORD_SCHEMA:
+        raise GovernanceRecordError("daily governance record schema mismatch")
+    if raw.get("date") != expected_date:
+        raise GovernanceRecordError(
+            f"daily governance record date must be {expected_date}"
         )
-        model.fit_traces(traces, alpha=0.5)
-        reliability_score = float(model.reliability_at_step(d=5))
-        receipt["reliability_score"] = reliability_score
 
-        if blockers:
-            raise GovernanceError(
-                "execution evidence contains unresolved or unsuccessful actions"
-            )
-        if reliability_score < RELIABILITY_THRESHOLD:
-            raise GovernanceError(
-                f"reliability {reliability_score:.4f} is below gate {RELIABILITY_THRESHOLD}"
-            )
+    plan_id = require_string(raw.get("plan_id"), "plan_id")
+    actions_raw = raw.get("actions")
+    if not isinstance(actions_raw, list) or not actions_raw:
+        raise GovernanceRecordError("actions must be a non-empty array")
+    actions = [validate_action(action, index) for index, action in enumerate(actions_raw)]
+    action_ids = [action["action_id"] for action in actions]
+    if len(action_ids) != len(set(action_ids)):
+        raise GovernanceRecordError("action_id values must be unique")
 
-        decision_material = {
-            "governed_day": governed_day,
-            "evidence_digest": receipt["evidence_digest"],
-            "plan_digest": receipt["plan_digest"],
-            "trace_digest": receipt["trace_digest"],
-            "reliability_score": format(reliability_score, ".12g"),
-            "threshold": format(RELIABILITY_THRESHOLD, ".12g"),
-            "mode": "PROGRESS",
-        }
-        receipt["decision_digest"] = digest_id(decision_material)
-        receipt["mode"] = "PROGRESS"
-        receipt["passed"] = True
-        return receipt
-    except (GovernanceError, ValueError, TypeError, OverflowError) as exc:
-        receipt["blockers"] = list(receipt.get("blockers", [])) + [str(exc)]
-        receipt["decision_digest"] = digest_id(
+    failures_raw = raw.get("unresolved_failures", [])
+    if not isinstance(failures_raw, list):
+        raise GovernanceRecordError("unresolved_failures must be an array")
+    unresolved_failures: list[dict[str, Any]] = []
+    seen_failure_ids: set[str] = set()
+    for index, failure in enumerate(failures_raw):
+        field = f"unresolved_failures[{index}]"
+        if not isinstance(failure, dict):
+            raise GovernanceRecordError(f"{field} must be an object")
+        failure_id = require_string(failure.get("failure_id"), f"{field}.failure_id")
+        if failure_id in seen_failure_ids:
+            raise GovernanceRecordError("failure_id values must be unique")
+        seen_failure_ids.add(failure_id)
+        unresolved_failures.append(
             {
-                "governed_day": governed_day,
-                "evidence_digest": receipt.get("evidence_digest"),
-                "trace_digest": receipt.get("trace_digest"),
-                "blockers": receipt["blockers"],
-                "mode": "REFINEMENT",
+                "failure_id": failure_id,
+                "summary": require_string(failure.get("summary"), f"{field}.summary"),
+                "evidence_refs": require_refs(
+                    failure.get("evidence_refs"), f"{field}.evidence_refs"
+                ),
             }
         )
-        return receipt
+
+    provenance = raw.get("provenance")
+    if not isinstance(provenance, dict):
+        raise GovernanceRecordError("provenance must be an object")
+    normalized = {
+        "schema": DAILY_RECORD_SCHEMA,
+        "date": expected_date,
+        "plan_id": plan_id,
+        "actions": actions,
+        "unresolved_failures": unresolved_failures,
+        "provenance": {
+            "generated_by": require_string(
+                provenance.get("generated_by"), "provenance.generated_by"
+            ),
+            "source_refs": require_refs(
+                provenance.get("source_refs"), "provenance.source_refs"
+            ),
+        },
+    }
+    return normalized
 
 
-def write_state(receipt: dict[str, Any]) -> None:
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    data = json.dumps(receipt, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
-    fd, temporary_name = tempfile.mkstemp(
-        prefix=f".{STATE_FILE.name}.",
-        suffix=".tmp",
-        dir=STATE_FILE.parent,
-        text=True,
-    )
-    temporary = pathlib.Path(temporary_name)
+def load_daily_record(path: Path, expected_date: str) -> dict[str, Any]:
+    if path.is_symlink() or not path.is_file():
+        raise GovernanceRecordError(f"regular daily evidence record required: {path}")
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            handle.write(data)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, STATE_FILE)
-        directory_fd = os.open(
-            STATE_FILE.parent,
-            os.O_RDONLY | getattr(os, "O_DIRECTORY", 0),
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise GovernanceRecordError(f"cannot read daily evidence record: {exc}") from exc
+    return validate_daily_record(raw, expected_date)
+
+
+def action_trace(action: dict[str, Any]) -> list[str]:
+    if not action["attempted"]:
+        return ["init", "abort"]
+    outcome = action["outcome"]
+    if outcome == "success":
+        return ["init", "execute", "verify", "success"]
+    if outcome == "recovered":
+        return ["init", "execute", "error", "refine", "verify", "success"]
+    if outcome == "timeout":
+        return ["init", "execute", "timeout"]
+    if outcome == "failed":
+        return ["init", "execute", "error", "abort"]
+    return ["init", "execute", "abort"]
+
+
+def derive_blockers(record: dict[str, Any]) -> list[str]:
+    blockers = [
+        f"unresolved-failure:{failure['failure_id']}"
+        for failure in record["unresolved_failures"]
+    ]
+    for action in record["actions"]:
+        action_id = action["action_id"]
+        if not action["attempted"]:
+            blockers.append(f"action:{action_id}:not-attempted")
+        if action["outcome"] not in SUCCESS_OUTCOMES:
+            blockers.append(f"action:{action_id}:outcome:{action['outcome']}")
+        if action["verification"]["status"] != "passed":
+            blockers.append(
+                f"action:{action_id}:verification:{action['verification']['status']}"
+            )
+    return list(dict.fromkeys(blockers))
+
+
+def calculate_reliability(traces: list[list[str]]) -> float:
+    if TraceToChain is None:
+        raise GovernanceRecordError(
+            "TraceToChain unavailable; governance reliability cannot be proven"
         )
-        try:
-            os.fsync(directory_fd)
-        finally:
-            os.close(directory_fd)
+    transient_order = ["init", "execute", "verify", "error", "refine"]
+    transient_states = [
+        state
+        for state in transient_order
+        if any(state in trace[:-1] for trace in traces)
+    ]
+    if not transient_states or transient_states[0] != "init":
+        raise GovernanceRecordError("execution traces lack a valid init state")
+    model = TraceToChain(
+        transient_states=transient_states,
+        success_states={"success"},
+        failure_states={"abort", "timeout"},
+    )
+    # No synthetic smoothing: every transition is estimated from the supplied
+    # evidence-derived traces. Validation guarantees each transient state has an
+    # outgoing transition, so alpha=0 does not create an empty row.
+    model.fit_traces(traces, alpha=0.0)
+    horizon = max(len(trace) for trace in traces) + 1
+    return float(model.reliability_at_step(d=horizon))
+
+
+def evaluate_record(record: dict[str, Any]) -> dict[str, Any]:
+    traces = [action_trace(action) for action in record["actions"]]
+    blockers = derive_blockers(record)
+    reliability_score = calculate_reliability(traces)
+    if reliability_score < RELIABILITY_THRESHOLD:
+        blockers.append("reliability-below-threshold")
+    blockers = list(dict.fromkeys(blockers))
+    return {
+        "passed": not blockers,
+        "record_date": record["date"],
+        "plan_id": record["plan_id"],
+        "record_digest": record_digest(record),
+        "action_count": len(record["actions"]),
+        "reliability_score": reliability_score,
+        "reliability_threshold": RELIABILITY_THRESHOLD,
+        "blockers": blockers,
+    }
+
+
+def expected_record_date() -> str:
+    explicit = os.environ.get("DEVMIND_GOVERNANCE_DATE")
+    if explicit:
+        if len(explicit) != 8 or not explicit.isdigit():
+            raise GovernanceRecordError(
+                "DEVMIND_GOVERNANCE_DATE must use YYYYMMDD"
+            )
+        return explicit
+    return (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+
+
+def verify_success() -> dict[str, Any]:
+    print("Executing 7:00 AM EST Ecosystem Governance Verification...")
+    checked_at = utc_now()
+    try:
+        record_date = expected_record_date()
+    except GovernanceRecordError as exc:
+        print(f"❌ {exc}")
+        return {"passed": False, "last_check": checked_at, "blockers": [str(exc)]}
+
+    record_path = LAMP_LOGS / f"daily-{record_date}.json"
+    try:
+        record = load_daily_record(record_path, record_date)
+        result = evaluate_record(record)
+    except GovernanceRecordError as exc:
+        print(f"❌ {exc}")
+        return {
+            "passed": False,
+            "last_check": checked_at,
+            "record_date": record_date,
+            "record_path": str(record_path),
+            "blockers": [str(exc)],
+        }
+
+    result["last_check"] = checked_at
+    result["record_path"] = str(record_path)
+    print(
+        f"Evidence-derived Markovian Reliability Score: "
+        f"{result['reliability_score']:.4f}"
+    )
+    if result["blockers"]:
+        for blocker in result["blockers"]:
+            print(f"❌ Governance blocker: {blocker}")
+    return result
+
+
+def atomic_write_state(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    temporary = path.with_name(f".{path.name}.tmp.{os.getpid()}")
+    data = json.dumps(value, sort_keys=True, indent=2).encode("utf-8") + b"\n"
+    fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    try:
+        offset = 0
+        while offset < len(data):
+            written = os.write(fd, data[offset:])
+            if written <= 0:
+                raise OSError("state write made no progress")
+            offset += written
+        os.fsync(fd)
     except BaseException:
+        os.close(fd)
         temporary.unlink(missing_ok=True)
         raise
-
-
-def main() -> int:
-    print("Executing daily ecosystem governance verification...")
-    receipt = evaluate_governance()
-    write_state(receipt)
-    if receipt["passed"]:
-        print(
-            "Governance Check Passed: typed evidence, derived traces, and "
-            f"decision {receipt['decision_digest']} support PROGRESS."
-        )
-        print(f"Markovian Reliability Score: {receipt['reliability_score']:.4f}")
-        return 0
-
-    print("Governance Check FAILED. Ecosystem remains in REFINEMENT mode.")
-    for blocker in receipt["blockers"]:
-        print(f" - {blocker}")
-    return 1
+    else:
+        os.close(fd)
+    os.replace(temporary, path)
+    try:
+        directory_fd = os.open(path.parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+    except OSError:
+        return
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    outcome = verify_success()
+    state = {
+        "mode": "PROGRESS" if outcome.get("passed") else "REFINEMENT",
+        **outcome,
+    }
+    atomic_write_state(STATE_FILE, state)
+    if outcome.get("passed"):
+        print(
+            "✅ Governance Check Passed. Proceeding with new Attractor SNF daily "
+            "orchestration."
+        )
+        sys.exit(0)
+    print("🚨 Governance Check FAILED. Ecosystem locked to REFINEMENT mode for the day.")
+    sys.exit(1)

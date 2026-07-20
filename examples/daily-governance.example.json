@@ -1,0 +1,64 @@
+{
+  "schema": "developing-mind.daily-governance/v1",
+  "date": "20260719",
+  "plan_id": "lamp-plan-20260719",
+  "actions": [
+    {
+      "action_id": "refresh-memory-index",
+      "objective": "Refresh the bounded memory index and verify the published generation.",
+      "attempted": true,
+      "outcome": "success",
+      "verification": {
+        "status": "passed",
+        "evidence_refs": [
+          "receipt://memory-index/20260719/sha256-example"
+        ]
+      },
+      "rollback": {
+        "status": "not-required",
+        "evidence_refs": []
+      },
+      "provenance": {
+        "actor": "developing-mind/lamp",
+        "source_refs": [
+          "plan://lamp-plan-20260719/action/refresh-memory-index",
+          "log://lamp/20260719/refresh-memory-index"
+        ]
+      }
+    },
+    {
+      "action_id": "repair-failed-evaluation",
+      "objective": "Repair one failed evaluation fixture and verify the corrected result.",
+      "attempted": true,
+      "outcome": "recovered",
+      "verification": {
+        "status": "passed",
+        "evidence_refs": [
+          "receipt://evaluation/20260719/corrected"
+        ]
+      },
+      "rollback": {
+        "status": "succeeded",
+        "evidence_refs": [
+          "receipt://evaluation/20260719/refinement"
+        ]
+      },
+      "provenance": {
+        "actor": "developing-mind/swarm",
+        "source_refs": [
+          "plan://lamp-plan-20260719/action/repair-failed-evaluation",
+          "log://swarm/20260719/repair-failed-evaluation"
+        ]
+      }
+    }
+  ],
+  "unresolved_failures": [],
+  "provenance": {
+    "generated_by": "developing-mind/daily-recorder-v1",
+    "source_refs": [
+      "plan://lamp-plan-20260719",
+      "log://lamp/20260719",
+      "log://swarm/20260719"
+    ]
+  }
+}

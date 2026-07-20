@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pleiades.example/schemas/developing-mind/daily-governance-v1.schema.json",
+  "title": "Developing Mind Daily Governance Evidence Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "date", "plan_id", "actions", "unresolved_failures", "provenance"],
+  "properties": {
+    "schema": {"const": "developing-mind.daily-governance/v1"},
+    "date": {"type": "string", "pattern": "^[0-9]{8}$"},
+    "plan_id": {"$ref": "#/$defs/nonEmptyString"},
+    "actions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/action"}},
+    "unresolved_failures": {"type": "array", "items": {"$ref": "#/$defs/failure"}},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generated_by", "source_refs"],
+      "properties": {
+        "generated_by": {"$ref": "#/$defs/nonEmptyString"},
+        "source_refs": {"$ref": "#/$defs/nonEmptyRefs"}
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "refs": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}},
+    "nonEmptyRefs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/nonEmptyString"}},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_refs"],
+      "properties": {
+        "status": {"enum": ["passed", "failed", "missing"]},
+        "evidence_refs": {"$ref": "#/$defs/refs"}
+      }
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "evidence_refs"],
+      "properties": {
+        "status": {"enum": ["not-required", "succeeded", "failed", "not-attempted"]},
+        "evidence_refs": {"$ref": "#/$defs/refs"}
+      }
+    },
+    "actionProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor", "source_refs"],
+      "properties": {
+        "actor": {"$ref": "#/$defs/nonEmptyString"},
+        "source_refs": {"$ref": "#/$defs/nonEmptyRefs"}
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action_id", "objective", "attempted", "outcome", "verification", "rollback", "provenance"],
+      "properties": {
+        "action_id": {"$ref": "#/$defs/nonEmptyString"},
+        "objective": {"$ref": "#/$defs/nonEmptyString"},
+        "attempted": {"type": "boolean"},
+        "outcome": {"enum": ["success", "recovered", "failed", "aborted", "timeout"]},
+        "verification": {"$ref": "#/$defs/verification"},
+        "rollback": {"$ref": "#/$defs/rollback"},
+        "provenance": {"$ref": "#/$defs/actionProvenance"}
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["failure_id", "summary", "evidence_refs"],
+      "properties": {
+        "failure_id": {"$ref": "#/$defs/nonEmptyString"},
+        "summary": {"$ref": "#/$defs/nonEmptyString"},
+        "evidence_refs": {"$ref": "#/$defs/nonEmptyRefs"}
+      }
+    }
+  }
+}

@@ -6,6 +6,7 @@ on:
       - master
       - 'codex/**'
       - 'modos/**'
+      - 'governance/**'
   pull_request:
 
 permissions:
@@ -14,13 +15,21 @@ permissions:
 jobs:
   promotion-before-canon:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Check governed scripts
+      - name: Compile governance code and tests
         run: |
-          bash -n scripts/substrate-sync.sh
-          python3 -m py_compile scripts/daily_governance.py tests/test_daily_governance_evidence.py
-      - name: Test publication policy
-        run: python3 -m unittest tests/test_substrate_sync_policy.py
-      - name: Test evidence-derived daily governance
-        run: python3 -m unittest tests/test_daily_governance_evidence.py
+          python3 -m py_compile \
+            scripts/daily_governance.py \
+            tests/test_daily_governance.py \
+            tests/test_daily_governance_contract.py \
+            tests/test_substrate_sync_policy.py
+      - name: Validate published JSON contracts
+        run: |
+          python3 -m json.tool schemas/daily-governance-v1.schema.json >/dev/null
+          python3 -m json.tool examples/daily-governance.example.json >/dev/null
+      - name: Check sync script syntax
+        run: bash -n scripts/substrate-sync.sh
+      - name: Test publication and governance policy
+        run: python3 -m unittest discover -s tests -v
