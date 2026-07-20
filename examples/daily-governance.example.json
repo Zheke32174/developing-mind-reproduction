@@ -1,0 +1,34 @@
+{
+  "schema": "developing-mind.daily-execution-evidence/v1",
+  "date": "20260719",
+  "record_id": "daily-execution-20260719",
+  "plan_id": "plan-20260719",
+  "plan_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "created_at": "2026-07-20T06:59:00Z",
+  "provenance": {
+    "collector": "lamp-governance-recorder/v1",
+    "source_refs": [
+      "git:Zheke32174/developing-mind-reproduction@example",
+      "artifact:verification/compile.json"
+    ]
+  },
+  "actions": [
+    {
+      "action_id": "compile",
+      "attempted": true,
+      "outcome": "success",
+      "verification": {
+        "status": "verified",
+        "receipts": [
+          "artifact:verification/compile.json"
+        ]
+      },
+      "rollback": {
+        "status": "not-required",
+        "receipts": []
+      }
+    }
+  ],
+  "unresolved_failures": [],
+  "record_digest": "sha256:16f319e2269517fa2e44016c5ae9830c0b3ea3bf9508b9a917b8d88a8f0a9cdc"
+}

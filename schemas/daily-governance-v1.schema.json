@@ -1,0 +1,153 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Zheke32174/developing-mind-reproduction/schemas/daily-governance-v1.schema.json",
+  "title": "Developing Mind daily execution evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "date",
+    "record_id",
+    "plan_id",
+    "plan_digest",
+    "created_at",
+    "provenance",
+    "actions",
+    "unresolved_failures",
+    "record_digest"
+  ],
+  "properties": {
+    "schema": {
+      "const": "developing-mind.daily-execution-evidence/v1"
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{8}$"
+    },
+    "record_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "plan_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128
+    },
+    "plan_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collector", "source_refs"],
+      "properties": {
+        "collector": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4096,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action_id",
+          "attempted",
+          "outcome",
+          "verification",
+          "rollback"
+        ],
+        "properties": {
+          "action_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "attempted": {
+            "type": "boolean"
+          },
+          "outcome": {
+            "enum": ["success", "failure", "rolled-back", "skipped"]
+          },
+          "verification": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "receipts"],
+            "properties": {
+              "status": {
+                "enum": ["verified", "failed", "missing"]
+              },
+              "receipts": {
+                "type": "array",
+                "maxItems": 4096,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                }
+              }
+            }
+          },
+          "rollback": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "receipts"],
+            "properties": {
+              "status": {
+                "enum": ["not-required", "completed", "failed", "pending"]
+              },
+              "receipts": {
+                "type": "array",
+                "maxItems": 4096,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "unresolved_failures": {
+      "type": "array",
+      "maxItems": 4096,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "record_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

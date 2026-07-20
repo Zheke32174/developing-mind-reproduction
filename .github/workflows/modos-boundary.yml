@@ -6,21 +6,59 @@ on:
       - master
       - 'codex/**'
       - 'modos/**'
+      - 'governance/**'
   pull_request:
 
 permissions:
   contents: read
 
+concurrency:
+  group: modos-boundary-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   promotion-before-canon:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Check governed scripts
+      - name: Compile publication and governance boundary
         run: |
-          bash -n scripts/substrate-sync.sh
-          python3 -m py_compile scripts/daily_governance.py tests/test_daily_governance_evidence.py
-      - name: Test publication policy
-        run: python3 -m unittest tests/test_substrate_sync_policy.py
-      - name: Test evidence-derived daily governance
-        run: python3 -m unittest tests/test_daily_governance_evidence.py
+          python3 -m py_compile \
+            scripts/daily_governance.py \
+            tests/test_daily_governance_evidence.py \
+            tests/test_daily_governance_empirical.py \
+            tests/test_daily_governance_contract.py \
+            tests/test_substrate_sync_policy.py
+      - name: Validate published JSON contracts
+        run: |
+          python3 -m json.tool schemas/daily-governance-v1.schema.json >/dev/null
+          python3 -m json.tool examples/daily-governance.example.json >/dev/null
+      - name: Check sync script syntax
+        run: bash -n scripts/substrate-sync.sh
+      - name: Capture complete publication and governance test report
+        id: tests
+        shell: bash
+        run: |
+          set +e
+          {
+            python3 tests/test_substrate_sync_policy.py
+            python3 -m unittest discover -s tests -p 'test_daily_governance*.py' -v
+          } > governance-tests.log 2>&1
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          cat governance-tests.log
+          exit 0
+      - name: Upload governance test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: governance-tests-${{ github.sha }}
+          path: governance-tests.log
+          if-no-files-found: error
+          retention-days: 14
+      - name: Enforce governance test result
+        if: always()
+        env:
+          TEST_EXIT: ${{ steps.tests.outputs.exit_code }}
+        run: test "$TEST_EXIT" = 0
