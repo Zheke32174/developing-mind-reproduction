@@ -18,6 +18,7 @@ import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 REPRO_DIR = pathlib.Path(os.environ.get("DEVMIND_REPRO_DIR", SCRIPT_DIR.parent))
@@ -28,6 +29,9 @@ STATE_FILE = pathlib.Path(
         "DEVMIND_GOVERNANCE_STATE",
         REPRO_DIR / "scripts" / "governance_state.json",
     )
+)
+GOVERNANCE_TIMEZONE = ZoneInfo(
+    os.environ.get("DEVMIND_GOVERNANCE_TIMEZONE", "America/New_York")
 )
 
 sys.path.append(str(REPRO_DIR / "src"))
@@ -42,8 +46,9 @@ MAX_EVIDENCE_BYTES = 4 * 1024 * 1024
 MAX_ACTIONS = 4096
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 RELIABILITY_THRESHOLD = float(
-    os.environ.get("DEVMIND_RELIABILITY_THRESHOLD", "0.45")
+    os.environ.get("DEVMIND_RELIABILITY_THRESHOLD", "0.85")
 )
+TRANSIENT_STATE_ORDER = ["init", "execute", "verify", "error", "refine"]
 
 
 class GovernanceError(ValueError):
@@ -274,7 +279,9 @@ def load_daily_evidence(day: str) -> tuple[pathlib.Path, dict[str, Any]]:
 
 
 def evaluate_governance(day: str | None = None) -> dict[str, Any]:
-    governed_day = day or (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+    governed_day = day or (
+        datetime.now(GOVERNANCE_TIMEZONE) - timedelta(days=1)
+    ).strftime("%Y%m%d")
     receipt: dict[str, Any] = {
         "schema": STATE_SCHEMA,
         "governed_day": governed_day,
@@ -300,13 +307,24 @@ def evaluate_governance(day: str | None = None) -> dict[str, Any]:
                 "TraceToChain unavailable; governance reliability cannot be derived"
             )
 
+        transient_states = [
+            state
+            for state in TRANSIENT_STATE_ORDER
+            if any(state in trace[:-1] for trace in traces)
+        ]
+        if not transient_states or transient_states[0] != "init":
+            raise GovernanceError("execution evidence lacks a valid initial state")
+        horizon = max(len(trace) for trace in traces) + 1
+        receipt["transient_states"] = transient_states
+        receipt["trace_horizon"] = horizon
+
         model = TraceToChain(
-            transient_states=["init", "execute", "verify", "error", "refine"],
+            transient_states=transient_states,
             success_states={"success"},
             failure_states={"abort", "timeout"},
         )
-        model.fit_traces(traces, alpha=0.5)
-        reliability_score = float(model.reliability_at_step(d=5))
+        model.fit_traces(traces, alpha=0.0)
+        reliability_score = float(model.reliability_at_step(d=horizon))
         receipt["reliability_score"] = reliability_score
 
         if blockers:
