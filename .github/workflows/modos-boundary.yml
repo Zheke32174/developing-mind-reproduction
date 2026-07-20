@@ -1,0 +1,26 @@
+name: MODOS Boundary
+
+on:
+  push:
+    branches:
+      - master
+      - 'codex/**'
+      - 'modos/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  promotion-before-canon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check governed scripts
+        run: |
+          bash -n scripts/substrate-sync.sh
+          python3 -m py_compile scripts/daily_governance.py tests/test_daily_governance_evidence.py
+      - name: Test publication policy
+        run: python3 -m unittest tests/test_substrate_sync_policy.py
+      - name: Test evidence-derived daily governance
+        run: python3 -m unittest tests/test_daily_governance_evidence.py
